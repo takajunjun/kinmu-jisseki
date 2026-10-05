@@ -402,11 +402,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
   function buildDays() {
     const n = dim(), wrap = $("#days");
     const today = new Date();
-    const openDay = (today.getFullYear() === state.meta.y && today.getMonth() + 1 === state.meta.m) ? today.getDate() : 1;
     let h = "";
     for (let d = 1; d <= n; d++) {
       const w = dow(d), cls = w === 0 ? "sun" : w === 6 ? "sat" : "";
-      h += `<details class="day" data-d="${d}" ${d === openDay ? "open" : ""}>
+      h += `<details class="day" data-d="${d}">
         <summary><span class="dn ${cls}">${d}<small>${DOW[w]}</small></span><span class="sum"></span><span class="chev" aria-hidden="true">▶</span></summary>
         <div class="dbody">
           <div class="dtools">
