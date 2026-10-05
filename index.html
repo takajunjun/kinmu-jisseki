@@ -21,6 +21,8 @@
   --accent-soft: #e3ebff;
   --sun: #c0342a;
   --sat: #2760c4;
+  --sym-blue: #1b3fd8;
+  --sym-red: #d41c1c;
   --ok: #17703f;
   --warn-bg: #fff4d6;
   --warn-ink: #5f4300;
@@ -30,14 +32,14 @@
   :root:not([data-theme="light"]) {
     --bg: #11151c; --surface: #1a202b; --surface-2: #222a37; --ink: #e9edf4; --muted: #a2adc0;
     --line: #333e50; --accent: #86a6ff; --accent-ink: #0d1320; --accent-soft: #24304f;
-    --sun: #ff8f84; --sat: #8fb4ff; --ok: #6fd69b; --warn-bg: #3a3014; --warn-ink: #ffe3a0;
+    --sun: #ff8f84; --sat: #8fb4ff; --sym-blue: #8fb0ff; --sym-red: #ff8a80; --ok: #6fd69b; --warn-bg: #3a3014; --warn-ink: #ffe3a0;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #11151c; --surface: #1a202b; --surface-2: #222a37; --ink: #e9edf4; --muted: #a2adc0;
   --line: #333e50; --accent: #86a6ff; --accent-ink: #0d1320; --accent-soft: #24304f;
-  --sun: #ff8f84; --sat: #8fb4ff; --ok: #6fd69b; --warn-bg: #3a3014; --warn-ink: #ffe3a0;
+  --sun: #ff8f84; --sat: #8fb4ff; --sym-blue: #8fb0ff; --sym-red: #ff8a80; --ok: #6fd69b; --warn-bg: #3a3014; --warn-ink: #ffe3a0;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -96,6 +98,8 @@ details[open] > summary .chev { transform: rotate(90deg); }
 .symgrp { display: flex; flex-wrap: wrap; gap: 6px; }
 .sym { width: 54px; height: 54px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); padding: 8px; display: grid; place-items: center; }
 .sym svg { width: 100%; height: 100%; }
+.sym:not([aria-pressed="true"]) svg[data-s="□"], .sum svg[data-s="□"] { color: var(--sym-blue); }
+.sym:not([aria-pressed="true"]) svg[data-s="△"], .sum svg[data-s="△"] { color: var(--sym-red); }
 .sym[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 12px; }
 .symrow { display: flex; flex-wrap: wrap; gap: 12px 28px; }
@@ -359,7 +363,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       "△": '<path d="M12 4.5L21 19H3z"/>',
       "□": '<rect x="5" y="5" width="14" height="14"/>'
     }[s] || "";
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round">${o}</svg>`;
+    return `<svg data-s="${s}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round">${o}</svg>`;
   }
   function symGroup(f) {
     return SYMS.map(s => `<button type="button" class="sym" data-f="${f}" data-v="${s}" aria-pressed="false" aria-label="${s}${SYM_NAME[s]}" title="${s}${SYM_NAME[s]}">${symSVG(s)}</button>`).join("");
@@ -480,7 +484,9 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
   }
 
   /* ---------- 描画（プレビューとPDFで共通） ---------- */
+  const SYMCOLOR = { "□": "#0b34e0", "△": "#e01010" };
   function drawSym(ctx, s, cx, cy, r) {
+    ctx.strokeStyle = SYMCOLOR[s] || "#000";
     ctx.lineWidth = r < 18 ? 2.6 : 3.4; ctx.lineJoin = "round"; ctx.lineCap = "round";
     ctx.beginPath();
     switch (s) {
@@ -492,6 +498,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       case "□": ctx.rect(cx - r, cy - r, r * 2, r * 2); break;
     }
     ctx.stroke();
+    ctx.strokeStyle = "#000";
   }
   function layout(ctx, text, w, h, maxSize, maxLines) {
     const chars = [...text]; let best = null;
