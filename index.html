@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>勤務実績表入力</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+/* 配置: 上にタブ、入力は日ごとに開閉するカード。印刷タブは用紙どおりのプレビューと保存ボタン。 */
+:root {
+  --bg: #eef1f5;
+  --surface: #ffffff;
+  --surface-2: #f5f7fa;
+  --ink: #17202e;
+  --muted: #566176;
+  --line: #cfd6e1;
+  --accent: #1c4fcf;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3ebff;
+  --sun: #c0342a;
+  --sat: #2760c4;
+  --ok: #17703f;
+  --warn-bg: #fff4d6;
+  --warn-ink: #5f4300;
+  --font: "BIZ UDPGothic", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151c; --surface: #1a202b; --surface-2: #222a37; --ink: #e9edf4; --muted: #a2adc0;
+    --line: #333e50; --accent: #86a6ff; --accent-ink: #0d1320; --accent-soft: #24304f;
+    --sun: #ff8f84; --sat: #8fb4ff; --ok: #6fd69b; --warn-bg: #3a3014; --warn-ink: #ffe3a0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151c; --surface: #1a202b; --surface-2: #222a37; --ink: #e9edf4; --muted: #a2adc0;
+  --line: #333e50; --accent: #86a6ff; --accent-ink: #0d1320; --accent-soft: #24304f;
+  --sun: #ff8f84; --sat: #8fb4ff; --ok: #6fd69b; --warn-bg: #3a3014; --warn-ink: #ffe3a0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 400 20px/1.55 var(--font); padding-inline: 16px; padding-block: 12px 96px; }
+.wrap { max-width: 1040px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
+.wrap > * { min-width: 0; }
+.wrap > .wrap { width: 100%; }
+h1 { font-size: 1.35rem; margin: 0; line-height: 1.3; }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+h3 { font-size: 1rem; margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.status { color: var(--muted); font-size: .8rem; }
+.tabs { display: flex; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; }
+.tab { flex: 1; min-height: 54px; border: 2px solid var(--line); background: var(--surface); border-radius: 10px; font-weight: 700; }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: .9rem; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 9rem; }
+.field > span, .lbl { font-size: .8rem; color: var(--muted); letter-spacing: .04em; }
+input[type=text], input[type=number], input[type=search], select {
+  min-height: 54px; width: 100%; min-width: 0; padding: 6px 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); font-variant-numeric: tabular-nums;
+}
+input[type=checkbox] { width: 30px; height: 30px; accent-color: var(--accent); flex: none; }
+.btn { min-height: 54px; padding: 8px 20px; border-radius: 10px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.btn.sub { background: var(--surface); color: var(--accent); }
+.btn.small { min-height: 46px; padding: 4px 14px; font-size: .85rem; }
+.btn:disabled { opacity: .5; cursor: default; }
+.chk { display: flex; align-items: center; gap: 10px; min-height: 46px; }
+.legend { color: var(--muted); font-size: .8rem; }
+.ym { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; align-items: end; width: 100%; max-width: 30rem; }
+.ym .field { flex: none; }
+
+/* 日ごとのカード */
+.days { display: flex; flex-direction: column; gap: 8px; }
+details.day { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+details.day[open] { border-color: var(--accent); }
+details.day > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 60px; cursor: pointer; }
+details.day > summary::-webkit-details-marker { display: none; }
+.dn { font-weight: 700; font-size: 1.15rem; min-width: 3.4em; font-variant-numeric: tabular-nums; }
+.dn small { font-size: .8rem; margin-left: 2px; }
+.dn.sun { color: var(--sun); } .dn.sat { color: var(--sat); }
+.sum { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; color: var(--muted); font-size: .85rem; }
+.sum .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sum svg { width: 22px; height: 22px; flex: none; color: var(--ink); }
+.chev { margin-left: auto; font-size: .7rem; color: var(--muted); transition: transform .15s; flex: none; }
+details[open] > summary .chev { transform: rotate(90deg); }
+.dbody { padding: 4px 14px 16px; display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--line); }
+.dtools { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-top: 12px; }
+.part { display: flex; flex-direction: column; gap: 12px; }
+.part + .part { border-top: 2px dashed var(--line); padding-top: 14px; }
+.plabel { font-weight: 700; color: var(--accent); }
+.symgrp { display: flex; flex-wrap: wrap; gap: 6px; }
+.sym { width: 54px; height: 54px; border-radius: 10px; border: 2px solid var(--line); background: var(--surface); padding: 8px; display: grid; place-items: center; }
+.sym svg { width: 100%; height: 100%; }
+.sym[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 12px; }
+.symrow { display: flex; flex-wrap: wrap; gap: 12px 28px; }
+
+.bulk > summary { cursor: pointer; font-weight: 700; min-height: 54px; display: flex; align-items: center; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.tot { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 12px; }
+
+/* 印刷タブ */
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { min-height: 54px; padding: 6px 18px; border: 2px solid var(--line); background: var(--surface); border-radius: 10px; font-weight: 700; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.pv { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.pv canvas { display: block; width: 100%; min-width: 760px; height: auto; }
+.steps { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 4px; }
+.fixed { position: fixed; inset-inline: 0; bottom: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--surface); border-top: 1px solid var(--line); display: flex; justify-content: center; gap: 12px; z-index: 6; }
+.fixed .btn { flex: 1 1 0; max-width: 420px; }
+textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); font: 400 .8rem/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vertical; }
+.msg { font-size: .85rem; color: var(--muted); min-height: 1.5em; }
+.msg.err { color: var(--sun); }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <div class="top">
+    <h1>勤務実績表入力</h1>
+    <span class="status" id="saveState"></span>
+  </div>
+  <div class="banner" id="sampleBanner" hidden>
+    <span>見本のデータが入っています。実際に使うときは消してから始めてください。</span>
+    <button class="btn small" id="clearSample" type="button">見本を消して始める</button>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-in" aria-selected="true" aria-controls="p-in" type="button">入力</button>
+    <button class="tab" role="tab" id="tab-print" aria-selected="false" aria-controls="p-print" type="button">印刷</button>
+    <button class="tab" role="tab" id="tab-set" aria-selected="false" aria-controls="p-set" type="button">設定</button>
+  </div>
+
+  <!-- 入力 -->
+  <section id="p-in" role="tabpanel" aria-labelledby="tab-in" class="wrap" style="gap:16px">
+    <div class="card">
+      <div class="row">
+        <div class="ym">
+          <label class="field"><span>年</span><input id="year" type="number" inputmode="numeric" min="2020" max="2099"></label>
+          <label class="field"><span>月</span><select id="month"></select></label>
+          <button class="btn sub small" id="prevM" type="button">前の月</button>
+          <button class="btn sub small" id="nextM" type="button">次の月</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <label class="field" style="flex-basis:12rem"><span>支社名</span><input id="branch" type="text" placeholder="益田"></label>
+        <label class="field" style="flex-basis:14rem"><span>氏名</span><input id="pname" type="text" placeholder="高畑 潤"></label>
+      </div>
+    </div>
+
+    <details class="card bulk" id="bulk">
+      <summary>まとめて入力（平日・全日にいっぺんに入れる）</summary>
+      <div class="part" style="margin-top:8px">
+        <div class="symrow">
+          <div><div class="lbl">予定</div><div class="symgrp" id="bulkPlan"></div></div>
+          <div><div class="lbl">実績</div><div class="symgrp" id="bulkAct"></div></div>
+        </div>
+        <div class="pair">
+          <label class="field"><span>勤務先</span><input id="bWork" type="text" list="dlWork" autocomplete="off"></label>
+          <label class="field"><span>場所</span><input id="bPlace" type="text" list="dlPlace" autocomplete="off"></label>
+          <label class="field"><span>開始</span><input id="bS" type="text" inputmode="numeric" placeholder="8:30"></label>
+          <label class="field"><span>終了</span><input id="bE" type="text" inputmode="numeric" placeholder="17:15"></label>
+          <label class="field"><span>TEL</span><input id="bTel" type="text" inputmode="decimal"></label>
+          <label class="field"><span>km</span><input id="bKm" type="text" inputmode="decimal"></label>
+        </div>
+        <label class="chk"><input type="checkbox" id="bKeep" checked> 入力済みの項目は上書きしない</label>
+        <div class="btns">
+          <button class="btn" type="button" data-bulk="weekday">平日に入れる</button>
+          <button class="btn sub" type="button" data-bulk="all">全日に入れる</button>
+          <button class="btn sub" type="button" data-bulk="holiday">土日に入れる</button>
+        </div>
+        <div class="msg" id="bulkMsg" role="status"></div>
+      </div>
+    </details>
+
+    <div class="legend">予定・実績の記号：○日勤　⊖夜勤　◎当務　×非番　△公休　□指定休　（もう一度押すと消えます）</div>
+    <div class="days" id="days"></div>
+
+    <div class="card">
+      <h2>計</h2>
+      <div class="tot">
+        <label class="field"><span>予定（日数）</span><input id="tPlan" type="text" inputmode="decimal"></label>
+        <label class="field"><span>実績（日数）</span><input id="tAct" type="text" inputmode="decimal"></label>
+        <label class="field"><span>TEL（合計）</span><input id="tTel" type="text" inputmode="decimal"></label>
+        <label class="field"><span>km（合計）</span><input id="tKm" type="text" inputmode="decimal"></label>
+      </div>
+      <p class="legend" style="margin:8px 0 0">空欄のときは入力内容から自動で数えます（○⊖◎を勤務日として数え、TELとkmは合計）。数字を直接入れるとそちらが優先されます。</p>
+    </div>
+  </section>
+
+  <!-- 印刷 -->
+  <section id="p-print" role="tabpanel" aria-labelledby="tab-print" class="wrap" style="gap:16px" hidden>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div class="lbl">印字する範囲</div>
+        <div class="seg" id="modeSeg">
+          <button type="button" data-mode="all" aria-pressed="true">すべて</button>
+          <button type="button" data-mode="plan" aria-pressed="false">予定だけ</button>
+          <button type="button" data-mode="act" aria-pressed="false">実績だけ</button>
+        </div>
+      </div>
+      <label class="chk"><input type="checkbox" id="oHead" checked> 年月・支社名・氏名も印字する</label>
+      <label class="chk"><input type="checkbox" id="oTot" checked> 「計」欄も印字する</label>
+      <label class="chk"><input type="checkbox" id="oGuide" checked> 確認用に用紙の枠を薄く重ねて表示（印刷には出ません）</label>
+    </div>
+    <div class="pv"><canvas id="pv" width="1241" height="878" aria-label="印字プレビュー"></canvas></div>
+    <div class="card">
+      <h2>印刷のしかた</h2>
+      <ol class="steps">
+        <li>下の「PDFを保存」を押して保存する</li>
+        <li>Adobe Acrobatで開いて印刷を押す</li>
+        <li>サイズは「実際のサイズ」、用紙はA5（横）にする</li>
+        <li>手差しトレイに用紙を入れて印刷する</li>
+      </ol>
+    </div>
+    <div class="msg" id="pdfMsg" role="status"></div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="p-set" role="tabpanel" aria-labelledby="tab-set" class="wrap" style="gap:16px" hidden>
+    <div class="card">
+      <h2>印字位置の補正</h2>
+      <p class="legend" style="margin:0 0 8px">現在のプリンターでは補正なし（0）で合っています。ずれたときだけ使います。右と下がプラスです。</p>
+      <div class="row">
+        <label class="field"><span>左右（mm）</span><input id="offX" type="number" step="0.1" inputmode="decimal"></label>
+        <label class="field"><span>上下（mm）</span><input id="offY" type="number" step="0.1" inputmode="decimal"></label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>データの保存</h2>
+      <p class="legend" style="margin:0 0 8px">入力した内容は、この端末のこのページの中にだけ保存されます。別の端末へ移すときは、書き出して読み込みます。</p>
+      <div class="btns">
+        <button class="btn" type="button" id="exportJson">データを書き出す（メモ帳用）</button>
+        <label class="btn sub" style="display:inline-flex;align-items:center">データを読み込む<input id="importJson" type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
+      </div>
+      <div class="msg" id="dataMsg" role="status"></div>
+      <div class="msg" id="dlState" role="status">ファイルの保存：確認中…</div>
+      <div id="jsonBox" hidden style="margin-top:8px">
+        <p class="legend" style="margin:0 0 8px">この画面ではファイルを保存できないので、下の文字をすべてコピーして、メモ帳などに貼って残してください。</p>
+        <textarea id="jsonOut" readonly aria-label="書き出したデータ"></textarea>
+        <div class="btns" style="margin-top:8px"><button class="btn small" type="button" id="copyJson">すべてコピー</button></div>
+      </div>
+      <details style="margin-top:12px">
+        <summary style="min-height:54px;display:flex;align-items:center;cursor:pointer;font-weight:700">文字を貼り付けて読み込む</summary>
+        <textarea id="jsonIn" aria-label="読み込むデータ"></textarea>
+        <div class="btns" style="margin-top:8px"><button class="btn small" type="button" id="pasteImport">貼り付けた内容を読み込む</button></div>
+      </details>
+    </div>
+    <div class="card">
+      <h2>この月を空にする</h2>
+      <div class="btns">
+        <button class="btn sub" type="button" id="wipeMonth">この月の入力を消す</button>
+        <button class="btn" type="button" id="wipeMonth2" hidden>本当に消す</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<datalist id="dlWork"></datalist>
+<datalist id="dlPlace"></datalist>
+
+<div class="fixed" id="bar">
+  <button class="btn" id="savePdf" type="button" hidden>PDFを保存</button>
+  <button class="btn" id="goPrint" type="button">印刷へ進む</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  /* ---------- 用紙の座標（300dpi換算のpx。用紙PDFから実測） ---------- */
+  const PW = 595.68, PH = 421.2;                       // A5横(pt)
+  const W300 = PW * 300 / 72, H300 = PH * 300 / 72;
+  const COLS = [294.5, 427.5, 560.5, 693.5, 827, 961, 1095, 1229, 1362.5, 1496, 1629, 1762, 1895.5, 2029, 2163, 2296, 2429.5];
+  const LEFT = 199.5;
+  const ROWS1 = [189.5, 240, 322.5, 405.5, 512.5, 618.5, 831.5, 891.5, 951];
+  const ROWS2 = [951, 998.5, 1081.5, 1164.5, 1270.5, 1377, 1589.5, 1649.5, 1709];
+  const R = { head: 0, plan: 1, act: 2, work: 3, place: 4, time: 5, tel: 6, km: 7 };
+  const FONT = '"BIZ UDPGothic","Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif';
+  const SYMS = ["○", "⊖", "◎", "×", "△", "□"];
+  const SYM_NAME = { "○": "日勤", "⊖": "夜勤", "◎": "当務", "×": "非番", "△": "公休", "□": "指定休" };
+  const WORKSYM = "○⊖◎";
+  const DOW = ["日", "月", "火", "水", "木", "金", "土"];
+  const KEY = "kinmu-print-v1";
+
+  /* ---------- 状態 ---------- */
+  const emptyPart = () => ({ plan: "", act: "", work: "", place: "", s: "", e: "", tel: "", km: "" });
+  const emptyDay = () => ({ split: false, p: [emptyPart(), emptyPart()] });
+  const now = new Date();
+  let state = { meta: { name: "", branch: "", y: now.getFullYear(), m: now.getMonth() + 1 }, off: { x: 0, y: 0 }, hist: { work: [], place: [] }, months: {}, sample: false };
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const ym = () => `${state.meta.y}-${String(state.meta.m).padStart(2, "0")}`;
+  const dim = () => new Date(state.meta.y, state.meta.m, 0).getDate();
+  const dow = d => new Date(state.meta.y, state.meta.m - 1, d).getDay();
+  function mdata() {
+    const k = ym();
+    if (!state.months[k]) state.months[k] = { days: {}, tot: { plan: "", act: "", tel: "", km: "" } };
+    return state.months[k];
+  }
+  function dday(d) {
+    const md = mdata();
+    if (!md.days[d]) md.days[d] = emptyDay();
+    return md.days[d];
+  }
+
+  /* ---------- 保存 ---------- */
+  let saveTimer = 0;
+  function setStatus(t) { $("#saveState").textContent = t; }
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) { const o = JSON.parse(raw); if (o && o.meta) { state = Object.assign(state, o); return true; } }
+    } catch (e) { /* 読めなくても動かす */ }
+    return false;
+  }
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); setStatus("この端末に保存しました"); }
+      catch (e) { setStatus("この環境では自動保存できません。設定からデータを書き出してください"); }
+    }, 300);
+  }
+  function touch() { if (state.sample) { state.sample = false; $("#sampleBanner").hidden = true; } save(); }
+
+  function sampleData() {
+    const s = { meta: { name: "見本 太郎", branch: "益田", y: now.getFullYear(), m: now.getMonth() + 1 }, off: { x: 0, y: 0 }, hist: { work: ["益田市役所"], place: ["益田"] }, months: {}, sample: true };
+    const days = {};
+    const n = new Date(s.meta.y, s.meta.m, 0).getDate();
+    for (let d = 1; d <= n; d++) {
+      const w = new Date(s.meta.y, s.meta.m - 1, d).getDay();
+      const day = emptyDay();
+      if (w === 0 || w === 6) { day.p[0].plan = "×"; day.p[0].act = "×"; }
+      else if (d <= 12) { Object.assign(day.p[0], { plan: "○", act: "○", work: "益田市役所", place: "益田", s: "8:30", e: "17:15", tel: "300", km: "12" }); }
+      else day.p[0].plan = "○";
+      days[d] = day;
+    }
+    s.months[`${s.meta.y}-${String(s.meta.m).padStart(2, "0")}`] = { days, tot: { plan: "", act: "", tel: "", km: "" } };
+    return s;
+  }
+
+  /* ---------- 記号アイコン ---------- */
+  function symSVG(s) {
+    const o = {
+      "○": '<circle cx="12" cy="12" r="8"/>',
+      "◎": '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.8"/>',
+      "⊖": '<circle cx="12" cy="12" r="8"/><path d="M4 12h16"/>',
+      "×": '<path d="M5 5l14 14M19 5L5 19"/>',
+      "△": '<path d="M12 4.5L21 19H3z"/>',
+      "□": '<rect x="5" y="5" width="14" height="14"/>'
+    }[s] || "";
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round">${o}</svg>`;
+  }
+  function symGroup(f) {
+    return SYMS.map(s => `<button type="button" class="sym" data-f="${f}" data-v="${s}" aria-pressed="false" aria-label="${s}${SYM_NAME[s]}" title="${s}${SYM_NAME[s]}">${symSVG(s)}</button>`).join("");
+  }
+
+  /* ---------- 時刻の整形 ---------- */
+  function normTime(v) {
+    const t = String(v).trim().replace(/[：.]/g, ":").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 65248));
+    if (!t) return "";
+    if (/^\d{1,2}:\d{2}$/.test(t)) return t.replace(/^0(\d:)/, "$1");
+    const d = t.replace(/\D/g, "");
+    if (d.length === 3) return `${d[0]}:${d.slice(1)}`;
+    if (d.length === 4) return `${d.slice(0, 2).replace(/^0/, "")}:${d.slice(2)}`;
+    if (d.length <= 2 && d) return `${Number(d)}:00`;
+    return t;
+  }
+
+  /* ---------- 日ごとのカード ---------- */
+  function partHTML(i) {
+    return `<div class="part" data-part="${i}">
+      <div class="plabel" hidden>${i === 0 ? "左半分（昼）" : "右半分（夜）"}</div>
+      <div class="symrow">
+        <div><div class="lbl">予定</div><div class="symgrp">${symGroup("plan")}</div></div>
+        <div><div class="lbl">実績</div><div class="symgrp">${symGroup("act")}</div></div>
+      </div>
+      <div class="pair">
+        <label class="field"><span>勤務先</span><input type="text" data-f="work" list="dlWork" autocomplete="off"></label>
+        <label class="field"><span>場所</span><input type="text" data-f="place" list="dlPlace" autocomplete="off"></label>
+        <label class="field"><span>開始</span><input type="text" data-f="s" inputmode="numeric" placeholder="8:30"></label>
+        <label class="field"><span>終了</span><input type="text" data-f="e" inputmode="numeric" placeholder="17:15"></label>
+        <label class="field"><span>TEL</span><input type="text" data-f="tel" inputmode="decimal"></label>
+        <label class="field"><span>km</span><input type="text" data-f="km" inputmode="decimal"></label>
+      </div>
+    </div>`;
+  }
+  function buildDays() {
+    const n = dim(), wrap = $("#days");
+    const today = new Date();
+    const openDay = (today.getFullYear() === state.meta.y && today.getMonth() + 1 === state.meta.m) ? today.getDate() : 1;
+    let h = "";
+    for (let d = 1; d <= n; d++) {
+      const w = dow(d), cls = w === 0 ? "sun" : w === 6 ? "sat" : "";
+      h += `<details class="day" data-d="${d}" ${d === openDay ? "open" : ""}>
+        <summary><span class="dn ${cls}">${d}<small>${DOW[w]}</small></span><span class="sum"></span><span class="chev" aria-hidden="true">▶</span></summary>
+        <div class="dbody">
+          <div class="dtools">
+            <label class="chk"><input type="checkbox" data-f="split"> 昼夜の連勤（1列を2分割）</label>
+            <button class="btn sub small" type="button" data-act="prev">前日と同じ</button>
+            <button class="btn sub small" type="button" data-act="clear">この日を消す</button>
+          </div>
+          ${partHTML(0)}${partHTML(1)}
+        </div></details>`;
+    }
+    wrap.innerHTML = h;
+    for (let d = 1; d <= n; d++) refreshDay(d);
+  }
+  function dayEl(d) { return $(`details.day[data-d="${d}"]`); }
+  function refreshDay(d) {
+    const el = dayEl(d); if (!el) return;
+    const day = dday(d);
+    $('[data-f="split"]', el).checked = !!day.split;
+    $$(".part", el).forEach((pe, i) => {
+      pe.hidden = i === 1 && !day.split;
+      $(".plabel", pe).hidden = !day.split;
+      const p = day.p[i];
+      $$("input[data-f]", pe).forEach(inp => { if (document.activeElement !== inp) inp.value = p[inp.dataset.f] || ""; });
+      $$(".sym", pe).forEach(b => b.setAttribute("aria-pressed", String(p[b.dataset.f] === b.dataset.v)));
+    });
+    // 概要
+    const parts = day.split ? [day.p[0], day.p[1]] : [day.p[0]];
+    const sum = $(".sum", el);
+    const mk = p => {
+      const sy = (p.act || p.plan) ? symSVG(p.act || p.plan) : "";
+      const tm = (p.s || p.e) ? `${p.s || ""}〜${p.e || ""}` : "";
+      const tx = [p.work, p.place, tm].filter(Boolean).join("　");
+      return `${sy}<span class="t">${esc(tx)}</span>`;
+    };
+    sum.innerHTML = parts.map(mk).join('<span style="color:var(--line)">｜</span>') || "";
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  function addHist(kind, v) {
+    v = (v || "").trim(); if (!v) return;
+    const a = state.hist[kind]; const i = a.indexOf(v); if (i >= 0) a.splice(i, 1);
+    a.unshift(v); if (a.length > 40) a.length = 40;
+  }
+  function fillDatalists() {
+    $("#dlWork").innerHTML = state.hist.work.map(v => `<option value="${esc(v)}">`).join("");
+    $("#dlPlace").innerHTML = state.hist.place.map(v => `<option value="${esc(v)}">`).join("");
+  }
+
+  /* ---------- 計 ---------- */
+  const num = v => { const n = parseFloat(String(v).replace(/[^\d.\-]/g, "")); return isNaN(n) ? 0 : n; };
+  const fmt = n => Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+  function autoTotals() {
+    const n = dim(); let plan = 0, act = 0, tel = 0, km = 0;
+    for (let d = 1; d <= n; d++) {
+      const day = dday(d);
+      (day.split ? day.p : [day.p[0]]).forEach(p => {
+        if (WORKSYM.includes(p.plan) && p.plan) plan++;
+        if (WORKSYM.includes(p.act) && p.act) act++;
+        tel += num(p.tel); km += num(p.km);
+      });
+    }
+    return { plan: fmt(plan), act: fmt(act), tel: fmt(tel), km: fmt(km) };
+  }
+  function finalTotals() {
+    const a = autoTotals(), t = mdata().tot;
+    return { plan: t.plan || a.plan, act: t.act || a.act, tel: t.tel || a.tel, km: t.km || a.km };
+  }
+  function refreshTotals() {
+    const a = autoTotals(), t = mdata().tot;
+    for (const k of ["plan", "act", "tel", "km"]) {
+      const el = $("#t" + k[0].toUpperCase() + k.slice(1));
+      el.placeholder = a[k];
+      if (document.activeElement !== el) el.value = t[k] || "";
+    }
+  }
+
+  /* ---------- 描画（プレビューとPDFで共通） ---------- */
+  function drawSym(ctx, s, cx, cy, r) {
+    ctx.lineWidth = r < 18 ? 2.6 : 3.4; ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.beginPath();
+    switch (s) {
+      case "○": ctx.arc(cx, cy, r, 0, 7); break;
+      case "◎": ctx.arc(cx, cy, r, 0, 7); ctx.moveTo(cx + r * .55, cy); ctx.arc(cx, cy, r * .55, 0, 7); break;
+      case "⊖": ctx.arc(cx, cy, r, 0, 7); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); break;
+      case "×": ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r); ctx.moveTo(cx - r, cy + r); ctx.lineTo(cx + r, cy - r); break;
+      case "△": ctx.moveTo(cx, cy - r * 1.1); ctx.lineTo(cx + r * 1.05, cy + r * .8); ctx.lineTo(cx - r * 1.05, cy + r * .8); ctx.closePath(); break;
+      case "□": ctx.rect(cx - r, cy - r, r * 2, r * 2); break;
+    }
+    ctx.stroke();
+  }
+  function layout(ctx, text, w, h, maxSize, maxLines) {
+    const chars = [...text]; let best = null;
+    ctx.font = `700 100px ${FONT}`;
+    for (let n = 1; n <= maxLines; n++) {
+      const per = Math.ceil(chars.length / n), lines = [];
+      for (let i = 0; i < chars.length; i += per) lines.push(chars.slice(i, i + per).join(""));
+      const mw = Math.max(...lines.map(l => ctx.measureText(l).width)) / 100;
+      const size = Math.min(maxSize, Math.floor(w / mw), Math.floor(h / (lines.length * 1.16)));
+      if (!best || size > best.size + 1) best = { lines, size };
+    }
+    return best;
+  }
+  function drawText(ctx, text, x0, x1, y0, y1, maxSize, maxLines, anchorY) {
+    if (!text) return;
+    const w = x1 - x0 - 8, h = y1 - y0 - 8;
+    const L = layout(ctx, String(text), w, h, maxSize, maxLines);
+    ctx.font = `700 ${L.size}px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const lh = L.size * 1.16, cx = (x0 + x1) / 2;
+    const cy = anchorY != null ? anchorY : (y0 + y1) / 2;
+    const top = cy - (L.lines.length * lh) / 2 + lh / 2;
+    L.lines.forEach((ln, i) => ctx.fillText(ln, cx, top + i * lh));
+  }
+
+  function cellRect(d, row) {
+    const blk = d <= 16 ? 0 : 1, rows = blk ? ROWS2 : ROWS1;
+    const ci = blk ? d - 17 : d - 1;
+    return { x0: COLS[ci], x1: COLS[ci + 1], y0: rows[row], y1: rows[row + 1] };
+  }
+  function totalRect(row) { return { x0: COLS[15], x1: COLS[16], y0: ROWS2[row], y1: ROWS2[row + 1] }; }
+
+  function render(ctx, scale, o) {
+    const mode = o.mode, head = o.head, tot = o.tot, guide = o.guide;
+    const wantPlan = mode !== "act", wantAct = mode !== "plan";
+    ctx.save();
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.scale(scale, scale);
+    if (guide) {
+      ctx.strokeStyle = "#b9bfca"; ctx.lineWidth = 2; ctx.fillStyle = "#b9bfca";
+      [[ROWS1, 16, 0], [ROWS2, 16, 16]].forEach(([rows, n]) => {
+        rows.forEach(y => { ctx.beginPath(); ctx.moveTo(LEFT, y); ctx.lineTo(COLS[n], y); ctx.stroke(); });
+        [LEFT, ...COLS.slice(0, n + 1)].forEach(x => { ctx.beginPath(); ctx.moveTo(x, rows[0]); ctx.lineTo(x, rows[8]); ctx.stroke(); });
+      });
+      ctx.font = `700 34px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      for (let d = 1; d <= 31; d++) { const c = cellRect(d, 0); ctx.fillText(String(d), (c.x0 + c.x1) / 2, (c.y0 + c.y1) / 2); }
+      const lab = ["日", "予定", "実績", "勤務先", "場所", "時間", "TEL", "km"];
+      lab.forEach((t, i) => { ctx.font = `700 26px ${FONT}`; ctx.fillText(t, (LEFT + COLS[0]) / 2, (ROWS1[i] + ROWS1[i + 1]) / 2); ctx.fillText(t, (LEFT + COLS[0]) / 2, (ROWS2[i] + ROWS2[i + 1]) / 2); });
+      ctx.fillText("計", (COLS[15] + COLS[16]) / 2, (ROWS2[0] + ROWS2[1]) / 2);
+      ctx.font = `700 70px ${FONT}`; ctx.fillText("益田支店", 800, 85);
+      ctx.font = `700 34px ${FONT}`; ctx.textAlign = "left";
+      ctx.fillText("年", 305, 100); ctx.fillText("月", 305, 152); ctx.fillText("支社名", 430, 100); ctx.fillText("氏　名", 430, 152);
+    }
+    ctx.translate(o.offX / 25.4 * 300, o.offY / 25.4 * 300);
+    ctx.fillStyle = "#000"; ctx.strokeStyle = "#000";
+
+    if (head) {
+      ctx.font = `700 40px ${FONT}`; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      ctx.fillText(String(state.meta.y), 298, 100);
+      ctx.fillText(String(state.meta.m), 298, 152);
+      drawText2(ctx, state.meta.branch, 562, 664, 100, 36, "left");
+      drawText2(ctx, state.meta.name, 562, 1000, 152, 40, "left");
+    }
+
+    const n = dim();
+    for (let d = 1; d <= n; d++) {
+      const day = dday(d);
+      const parts = day.split ? [0, 1] : [0];
+      parts.forEach(i => {
+        const p = day.p[i];
+        const cut = (r) => { const c = cellRect(d, r); if (!day.split) return c; const mid = (c.x0 + c.x1) / 2; return i === 0 ? { ...c, x1: mid } : { ...c, x0: mid }; };
+        const half = day.split;
+        const rr = half ? 15 : 24;
+        if (wantPlan && p.plan) { const c = cut(R.plan); drawSym(ctx, p.plan, (c.x0 + c.x1) / 2, (c.y0 + c.y1) / 2, rr); }
+        if (wantAct) {
+          if (p.act) { const c = cut(R.act); drawSym(ctx, p.act, (c.x0 + c.x1) / 2, (c.y0 + c.y1) / 2, rr); }
+          let c = cut(R.work); drawText(ctx, p.work, c.x0, c.x1, c.y0, c.y1, half ? 26 : 34, half ? 3 : 2);
+          c = cut(R.place); drawText(ctx, p.place, c.x0, c.x1, c.y0, c.y1, half ? 26 : 34, half ? 3 : 2);
+          c = cut(R.time);
+          const hh = c.y1 - c.y0;
+          if (p.s) drawText(ctx, p.s, c.x0, c.x1, c.y0, c.y1, half ? 24 : 38, 1, c.y0 + hh * 0.27);
+          if (p.e) drawText(ctx, p.e, c.x0, c.x1, c.y0, c.y1, half ? 24 : 38, 1, c.y0 + hh * 0.78);
+          c = cut(R.tel); drawText(ctx, p.tel, c.x0, c.x1, c.y0, c.y1, half ? 26 : 38, 1);
+          c = cut(R.km); drawText(ctx, p.km, c.x0, c.x1, c.y0, c.y1, half ? 26 : 38, 1);
+        }
+      });
+    }
+    if (tot) {
+      const t = finalTotals();
+      if (wantPlan) { const c = totalRect(R.plan); drawText(ctx, t.plan, c.x0, c.x1, c.y0, c.y1, 38, 1); }
+      if (wantAct) {
+        let c = totalRect(R.act); drawText(ctx, t.act, c.x0, c.x1, c.y0, c.y1, 38, 1);
+        c = totalRect(R.tel); drawText(ctx, t.tel, c.x0, c.x1, c.y0, c.y1, 38, 1);
+        c = totalRect(R.km); drawText(ctx, t.km, c.x0, c.x1, c.y0, c.y1, 38, 1);
+      }
+    }
+    ctx.restore();
+  }
+  function drawText2(ctx, text, x0, x1, cy, maxSize, align) {
+    if (!text) return;
+    ctx.font = `700 100px ${FONT}`;
+    const mw = ctx.measureText(text).width / 100;
+    const size = Math.min(maxSize, Math.floor((x1 - x0) / mw));
+    ctx.font = `700 ${size}px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(text, x0, cy);
+  }
+
+  /* ---------- ファイル保存(使えない画面では代わりの方法を出す) ---------- */
+  let dlCache = null;
+  async function getDL() {
+    if (dlCache) return dlCache;
+    try {
+      if (!window.claude || !window.claude.use) return null;
+      const d = await Promise.race([window.claude.use("downloads"), new Promise(r => setTimeout(() => r(null), 4000))]);
+      if (d) dlCache = d;
+      return d || null;
+    } catch (e) { return null; }
+  }
+
+  // このページ単体をブラウザで開いている場合(チャットの画面に埋め込まれていない場合)は、ふつうのダウンロードが使える
+  const STANDALONE = (() => { try { return window.self === window.top; } catch (e) { return false; } })();
+  async function saveFile(name, blob) {
+    if (STANDALONE) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = name; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+      return "saved";
+    }
+    const dl = await getDL();
+    if (!dl) return "unavailable";
+    await dl.save({ filename: name, data: blob });
+    return "saved";
+  }
+
+  /* ---------- 印刷タブ ---------- */
+  const opt = { mode: "all" };
+  function printOpts(guide) {
+    return { mode: opt.mode, head: $("#oHead").checked, tot: $("#oTot").checked, guide, offX: state.off.x, offY: state.off.y };
+  }
+  async function ensureFonts() {
+    const txt = JSON.stringify(state) + "０１２３４５６７８９年月日予定実績勤務先場所時間計益田支店氏名○⊖◎×△□:";
+    try { await Promise.race([document.fonts.load(`700 30px "BIZ UDPGothic"`, txt), new Promise(r => setTimeout(r, 2500))]); } catch (e) { /* 代替フォントで続行 */ }
+  }
+  let pvToken = 0;
+  async function drawPreview() {
+    const tk = ++pvToken; await ensureFonts(); if (tk !== pvToken) return;
+    const cv = $("#pv"); const sc = cv.width / W300;
+    render(cv.getContext("2d"), sc, printOpts($("#oGuide").checked));
+  }
+  async function makePdf() {
+    const msg = $("#pdfMsg"); msg.className = "msg"; msg.textContent = "PDFを作っています…";
+    await ensureFonts();
+    if (!window.jspdf) { msg.className = "msg err"; msg.textContent = "PDF作成の部品を読み込めませんでした。通信状況を確認して、ページを開き直してください。"; return; }
+    const dpi = 400, sc = dpi / 300;
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(W300 * sc); cv.height = Math.round(H300 * sc);
+    render(cv.getContext("2d"), sc, printOpts(false));
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: [PW, PH], compress: true });
+    pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, PW, PH, undefined, "FAST");
+    const blob = pdf.output("blob");
+    const label = { all: "全部", plan: "予定", act: "実績" }[opt.mode];
+    const name = `勤務実績表_${state.meta.name.replace(/\s+/g, "") || "氏名なし"}_${ym()}_${label}.pdf`;
+    try {
+      const r = await saveFile(name, blob);
+      if (r === "unavailable") {
+        const url = URL.createObjectURL(blob);
+        msg.className = "msg err";
+        msg.innerHTML = `この画面ではファイルを保存できません。次のリンクでPDFが開けるか試してください：<a id="pdfLink" href="${url}" target="_blank" rel="noopener">PDFを開く</a>`;
+        try { window.open(url, "_blank"); } catch (e) { /* リンクで代用 */ }
+        return;
+      }
+      msg.textContent = STANDALONE ? `「${name}」をダウンロードしました。Acrobatで開いて、サイズを「実際のサイズ」にして印刷してください。` : "保存しました。Acrobatで開いて、サイズを「実際のサイズ」にして印刷してください。";
+    } catch (e) {
+      msg.className = "msg err";
+      msg.textContent = e && e.code === "declined" ? "保存をやめました。" : "保存できませんでした。もう一度お試しください。";
+    }
+  }
+
+  /* ---------- タブ ---------- */
+  function showTab(id) {
+    ["in", "print", "set"].forEach(k => {
+      $("#p-" + k).hidden = k !== id;
+      $("#tab-" + k).setAttribute("aria-selected", String(k === id));
+    });
+    $("#savePdf").hidden = id !== "print";
+    $("#goPrint").hidden = id === "print";
+    $("#bar").hidden = id === "set";
+    if (id === "print") drawPreview();
+    window.scrollTo({ top: 0 });
+  }
+
+  /* ---------- 一括入力 ---------- */
+  const bulk = { plan: "", act: "" };
+  function bulkApply(kind) {
+    const vals = { plan: bulk.plan, act: bulk.act, work: $("#bWork").value.trim(), place: $("#bPlace").value.trim(), s: normTime($("#bS").value), e: normTime($("#bE").value), tel: $("#bTel").value.trim(), km: $("#bKm").value.trim() };
+    const keep = $("#bKeep").checked; let cnt = 0;
+    const n = dim();
+    for (let d = 1; d <= n; d++) {
+      const w = dow(d), isHol = w === 0 || w === 6;
+      if (kind === "weekday" && isHol) continue;
+      if (kind === "holiday" && !isHol) continue;
+      const day = dday(d), p = day.p[0]; let hit = false;
+      for (const k in vals) { if (!vals[k]) continue; if (keep && p[k]) continue; p[k] = vals[k]; hit = true; }
+      if (hit) { cnt++; refreshDay(d); }
+    }
+    addHist("work", vals.work); addHist("place", vals.place); fillDatalists();
+    refreshTotals(); touch();
+    $("#bulkMsg").textContent = cnt ? `${cnt}日分に入れました。` : "入れる項目が空か、すべて入力済みでした。";
+  }
+
+  /* ---------- イベント ---------- */
+  function onDaysInput(ev) {
+    const t = ev.target, el = t.closest("details.day"); if (!el) return;
+    const d = +el.dataset.d, day = dday(d);
+    if (t.matches('[data-f="split"]')) { day.split = t.checked; refreshDay(d); refreshTotals(); touch(); return; }
+    const pe = t.closest(".part"); if (!pe) return;
+    const p = day.p[+pe.dataset.part];
+    p[t.dataset.f] = t.value;
+    refreshDay(d); refreshTotals(); touch();
+  }
+  function init() {
+    // 月セレクト
+    $("#month").innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join("");
+    $("#bulkPlan").innerHTML = symGroup("bplan"); $("#bulkAct").innerHTML = symGroup("bact");
+
+    const had = load();
+    if (!had) { state = sampleData(); }
+    $("#sampleBanner").hidden = !state.sample;
+    $("#year").value = state.meta.y; $("#month").value = state.meta.m;
+    $("#branch").value = state.meta.branch; $("#pname").value = state.meta.name;
+    $("#offX").value = state.off.x; $("#offY").value = state.off.y;
+    fillDatalists(); buildDays(); refreshTotals();
+
+    $("#days").addEventListener("input", onDaysInput);
+    $("#days").addEventListener("change", ev => {
+      const t = ev.target; if (!t.matches("input[data-f]") || t.dataset.f === "split") return;
+      const el = t.closest("details.day"), pe = t.closest(".part"); if (!el || !pe) return;
+      const d = +el.dataset.d, p = dday(d).p[+pe.dataset.part];
+      if (t.dataset.f === "s" || t.dataset.f === "e") { p[t.dataset.f] = normTime(t.value); t.value = p[t.dataset.f]; }
+      if (t.dataset.f === "work") { addHist("work", t.value); fillDatalists(); }
+      if (t.dataset.f === "place") { addHist("place", t.value); fillDatalists(); }
+      refreshDay(d); touch();
+    });
+    $("#days").addEventListener("click", ev => {
+      const b = ev.target.closest("button"); if (!b) return;
+      const el = b.closest("details.day"); if (!el) return;
+      const d = +el.dataset.d, day = dday(d);
+      if (b.classList.contains("sym")) {
+        const p = day.p[+b.closest(".part").dataset.part], f = b.dataset.f;
+        p[f] = p[f] === b.dataset.v ? "" : b.dataset.v;
+        refreshDay(d); refreshTotals(); touch(); return;
+      }
+      if (b.dataset.act === "clear") { dday(d); mdata().days[d] = emptyDay(); refreshDay(d); refreshTotals(); touch(); }
+      if (b.dataset.act === "prev" && d > 1) {
+        const src = dday(d - 1); mdata().days[d] = JSON.parse(JSON.stringify(src)); refreshDay(d); refreshTotals(); touch();
+      }
+    });
+    $("#bulk").addEventListener("click", ev => {
+      const b = ev.target.closest("button"); if (!b) return;
+      if (b.classList.contains("sym")) {
+        const f = b.dataset.f === "bplan" ? "plan" : "act";
+        bulk[f] = bulk[f] === b.dataset.v ? "" : b.dataset.v;
+        $$(`.sym[data-f="${b.dataset.f}"]`, $("#bulk")).forEach(x => x.setAttribute("aria-pressed", String(bulk[f] === x.dataset.v)));
+        return;
+      }
+      if (b.dataset.bulk) bulkApply(b.dataset.bulk);
+    });
+    ["#bS", "#bE"].forEach(s => $(s).addEventListener("change", e => { e.target.value = normTime(e.target.value); }));
+
+    const setYM = (y, m) => {
+      if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; }
+      state.meta.y = y; state.meta.m = m;
+      $("#year").value = y; $("#month").value = m;
+      buildDays(); refreshTotals(); touch();
+    };
+    $("#year").addEventListener("change", () => { const y = +$("#year").value; if (y >= 2020 && y <= 2099) setYM(y, state.meta.m); });
+    $("#month").addEventListener("change", () => setYM(state.meta.y, +$("#month").value));
+    $("#prevM").addEventListener("click", () => setYM(state.meta.y, state.meta.m - 1));
+    $("#nextM").addEventListener("click", () => setYM(state.meta.y, state.meta.m + 1));
+    $("#branch").addEventListener("input", e => { state.meta.branch = e.target.value; touch(); });
+    $("#pname").addEventListener("input", e => { state.meta.name = e.target.value; touch(); });
+    [["tPlan", "plan"], ["tAct", "act"], ["tTel", "tel"], ["tKm", "km"]].forEach(([id, k]) => $("#" + id).addEventListener("input", e => { mdata().tot[k] = e.target.value; touch(); }));
+
+    $("#clearSample").addEventListener("click", () => {
+      const keepName = "";
+      state = { meta: { name: keepName, branch: "", y: now.getFullYear(), m: now.getMonth() + 1 }, off: { x: 0, y: 0 }, hist: { work: [], place: [] }, months: {}, sample: false };
+      $("#sampleBanner").hidden = true;
+      $("#year").value = state.meta.y; $("#month").value = state.meta.m; $("#branch").value = ""; $("#pname").value = "";
+      fillDatalists(); buildDays(); refreshTotals(); save();
+    });
+
+    // タブ・印刷
+    $("#tab-in").addEventListener("click", () => showTab("in"));
+    $("#tab-print").addEventListener("click", () => showTab("print"));
+    $("#tab-set").addEventListener("click", () => showTab("set"));
+    $("#goPrint").addEventListener("click", () => showTab("print"));
+    $("#savePdf").addEventListener("click", makePdf);
+    $("#modeSeg").addEventListener("click", ev => {
+      const b = ev.target.closest("button"); if (!b) return;
+      opt.mode = b.dataset.mode;
+      $$("#modeSeg button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      $("#oHead").checked = opt.mode !== "act";
+      drawPreview();
+    });
+    ["#oHead", "#oTot", "#oGuide"].forEach(s => $(s).addEventListener("change", drawPreview));
+
+    // 設定
+    const off = () => { state.off.x = +$("#offX").value || 0; state.off.y = +$("#offY").value || 0; save(); };
+    $("#offX").addEventListener("input", off); $("#offY").addEventListener("input", off);
+    $("#exportJson").addEventListener("click", async () => {
+      const m = $("#dataMsg"); m.className = "msg";
+      const name = `勤務実績表データ_${ym()}.txt`;
+      const blob = new Blob([JSON.stringify(state)], { type: "text/plain;charset=utf-8" });
+      try {
+        const r = await saveFile(name, blob);
+        if (r === "unavailable") {
+          $("#jsonOut").value = JSON.stringify(state); $("#jsonBox").hidden = false;
+          $("#jsonOut").focus(); $("#jsonOut").select();
+          m.className = "msg err"; m.textContent = "この画面ではファイルを保存できません。下の文字をコピーしてください。"; return;
+        }
+        m.textContent = STANDALONE ? `「${name}」をダウンロードしました（メモ帳で開けます）。` : "書き出しました。";
+      } catch (e) { m.className = "msg err"; m.textContent = e && e.code === "declined" ? "書き出しをやめました。" : "書き出せませんでした。"; }
+    });
+    $("#importJson").addEventListener("change", ev => {
+      const f = ev.target.files[0]; if (!f) return;
+      const m = $("#dataMsg"); m.className = "msg";
+      const rd = new FileReader();
+      rd.onload = () => importText(rd.result);
+      rd.readAsText(f); ev.target.value = "";
+    });
+    $("#pasteImport").addEventListener("click", () => importText($("#jsonIn").value));
+    $("#copyJson").addEventListener("click", async () => {
+      const t = $("#jsonOut"), m = $("#dataMsg"); t.focus(); t.select();
+      try { await navigator.clipboard.writeText(t.value); m.className = "msg"; m.textContent = "コピーしました。メモ帳などに貼り付けて残してください。"; }
+      catch (e) { m.className = "msg err"; m.textContent = "自動でコピーできませんでした。選択された文字を、キーボードでコピーしてください。"; }
+    });
+    if (STANDALONE) $("#dlState").textContent = "ファイルの保存：使えます（ダウンロードフォルダに保存されます）";
+    else getDL().then(d => { $("#dlState").textContent = d ? "ファイルの保存：使えます" : "ファイルの保存：この画面では使えません（コピーで代用できます）"; });
+    $("#wipeMonth").addEventListener("click", () => { $("#wipeMonth2").hidden = false; });
+    $("#wipeMonth2").addEventListener("click", () => {
+      delete state.months[ym()]; $("#wipeMonth2").hidden = true; buildDays(); refreshTotals(); touch();
+    });
+    if (had) setStatus("この端末に保存した内容を開きました");
+    function importText(text) {
+      const m = $("#dataMsg"); m.className = "msg";
+      try {
+        const o = JSON.parse(text);
+        if (!o || !o.meta || !o.months) throw new Error("形式が違います");
+        o.sample = false; state = Object.assign(state, o);
+        $("#year").value = state.meta.y; $("#month").value = state.meta.m;
+        $("#branch").value = state.meta.branch; $("#pname").value = state.meta.name;
+        $("#offX").value = state.off.x; $("#offY").value = state.off.y;
+        $("#sampleBanner").hidden = true;
+        fillDatalists(); buildDays(); refreshTotals(); save();
+        m.textContent = "読み込みました。";
+      } catch (e) { m.className = "msg err"; m.textContent = "読み込めませんでした。このツールで書き出したデータを、まるごと貼り付けてください。"; }
+    }
+  }
+  init();
+  window.__kinmu = { render, state: () => state, W300, H300, dday, buildDays, refreshDay, ensureFonts, setState: s => { state = s; } };
+})();
+</script>
+
+</body>
+</html>
