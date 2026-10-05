@@ -126,10 +126,6 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
 </style>
-<style>body{margin:0}</style>
-</head>
-<body>
-
 
 <div class="wrap">
   <div class="top">
@@ -672,7 +668,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, PW, PH, undefined, "FAST");
     const blob = pdf.output("blob");
     const label = { all: "全部", plan: "予定", act: "実績" }[opt.mode];
-    const name = `勤務実績表_${state.meta.name.replace(/\s+/g, "") || "氏名なし"}_${ym()}_${label}.pdf`;
+    const name = `${state.meta.name.replace(/[\s\\\/:*?"<>|]+/g, "") || "氏名なし"}_勤務実績表_${ym()}_${label}.pdf`;
     try {
       const r = await saveFile(name, blob);
       if (r === "unavailable") {
@@ -823,7 +819,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     $("#offX").addEventListener("input", off); $("#offY").addEventListener("input", off);
     $("#exportJson").addEventListener("click", async () => {
       const m = $("#dataMsg"); m.className = "msg";
-      const name = `勤務実績表データ_${ym()}.txt`;
+      const name = `${(state.meta.name||"").replace(/[\s\\\/:*?"<>|]+/g, "") || "氏名なし"}_勤務実績表_${ym()}.txt`;
       const blob = new Blob([JSON.stringify(state)], { type: "text/plain;charset=utf-8" });
       try {
         const r = await saveFile(name, blob);
@@ -874,6 +870,5 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
   window.__kinmu = { render, state: () => state, W300, H300, dday, buildDays, refreshDay, ensureFonts, setState: s => { state = s; } };
 })();
 </script>
-
 </body>
 </html>
