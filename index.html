@@ -251,11 +251,12 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
         <textarea id="jsonOut" readonly aria-label="書き出したデータ"></textarea>
         <div class="btns" style="margin-top:8px"><button class="btn small" type="button" id="copyJson">すべてコピー</button></div>
       </div>
-      <details style="margin-top:12px">
-        <summary style="min-height:54px;display:flex;align-items:center;cursor:pointer;font-weight:700">文字を貼り付けて読み込む</summary>
-        <textarea id="jsonIn" aria-label="読み込むデータ"></textarea>
+      <div style="margin-top:14px">
+        <label for="jsonIn" style="display:block;font-weight:700;margin-bottom:6px">メモ帳の内容をここに貼り付け</label>
+        <p class="legend" style="margin:0 0 8px">メモ帳で全部コピー（Ctrl+A → Ctrl+C）して、下の枠に貼り付けると、自動で読み込みます。メモ帳ファイルをこの枠へドラッグしても読み込めます。</p>
+        <textarea id="jsonIn" aria-label="メモ帳の内容を貼り付け" placeholder="ここに貼り付け"></textarea>
         <div class="btns" style="margin-top:8px"><button class="btn small" type="button" id="pasteImport">貼り付けた内容を読み込む</button></div>
-      </details>
+      </div>
     </div>
     <div class="card">
       <h2>この月を空にする</h2>
@@ -839,6 +840,12 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       rd.readAsText(f); ev.target.value = "";
     });
     $("#pasteImport").addEventListener("click", () => importText($("#jsonIn").value));
+    $("#jsonIn").addEventListener("paste", () => setTimeout(() => { const t = $("#jsonIn"); if (t.value.trim()) { importText(t.value); t.value = ""; } }, 50));
+    $("#jsonIn").addEventListener("dragover", ev => ev.preventDefault());
+    $("#jsonIn").addEventListener("drop", ev => {
+      const f = ev.dataTransfer && ev.dataTransfer.files[0]; if (!f) return;
+      ev.preventDefault(); const rd = new FileReader(); rd.onload = () => importText(rd.result); rd.readAsText(f);
+    });
     $("#copyJson").addEventListener("click", async () => {
       const t = $("#jsonOut"), m = $("#dataMsg"); t.focus(); t.select();
       try { await navigator.clipboard.writeText(t.value); m.className = "msg"; m.textContent = "コピーしました。メモ帳などに貼り付けて残してください。"; }
