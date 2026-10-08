@@ -169,8 +169,8 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
         <div class="pair">
           <label class="field"><span>勤務先</span><input id="bWork" type="text" list="dlWork" autocomplete="off"></label>
           <label class="field"><span>場所</span><input id="bPlace" type="text" list="dlPlace" autocomplete="off"></label>
-          <label class="field"><span>開始</span><input id="bS" type="text" inputmode="numeric" placeholder="8:30"></label>
-          <label class="field"><span>終了</span><input id="bE" type="text" inputmode="numeric" placeholder="17:15"></label>
+          <label class="field"><span>開始</span><input id="bS" type="text" inputmode="numeric" placeholder="08:00"></label>
+          <label class="field"><span>終了</span><input id="bE" type="text" inputmode="numeric" placeholder="17:00"></label>
           <label class="field"><span>TEL</span><input id="bTel" type="text" inputmode="decimal"></label>
           <label class="field"><span>km</span><input id="bKm" type="text" inputmode="decimal"></label>
         </div>
@@ -392,8 +392,8 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       <div class="pair">
         <label class="field"><span>勤務先</span><input type="text" data-f="work" list="dlWork" autocomplete="off"></label>
         <label class="field"><span>場所</span><input type="text" data-f="place" list="dlPlace" autocomplete="off"></label>
-        <label class="field"><span>開始</span><input type="text" data-f="s" inputmode="numeric" placeholder="8:30"></label>
-        <label class="field"><span>終了</span><input type="text" data-f="e" inputmode="numeric" placeholder="17:15"></label>
+        <label class="field"><span>開始</span><input type="text" data-f="s" inputmode="numeric" placeholder="08:00"></label>
+        <label class="field"><span>終了</span><input type="text" data-f="e" inputmode="numeric" placeholder="17:00"></label>
         <label class="field"><span>TEL</span><input type="text" data-f="tel" inputmode="decimal"></label>
         <label class="field"><span>km</span><input type="text" data-f="km" inputmode="decimal"></label>
       </div>
@@ -433,6 +433,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
         inp.classList.toggle("yk", String(p[inp.dataset.f] || "").includes("有給"));
       });
       $$(".sym", pe).forEach(b => b.setAttribute("aria-pressed", String(p[b.dataset.f] === b.dataset.v)));
+      const night = (p.act || p.plan) === "⊖" || (day.split && i === 1);
+      const si = $('[data-f="s"]', pe), ei = $('[data-f="e"]', pe);
+      if (si) si.placeholder = night ? "20:00" : "08:00";
+      if (ei) ei.placeholder = night ? "05:00" : "17:00";
     });
     // 概要
     const parts = day.split ? [day.p[0], day.p[1]] : [day.p[0]];
@@ -742,6 +746,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     fillDatalists(); buildDays(); refreshTotals();
 
     $("#days").addEventListener("input", onDaysInput);
+    document.addEventListener("focusin", ev => {
+      const t = ev.target;
+      if (t.matches && t.matches('input[data-f="s"], input[data-f="e"], #bS, #bE')) setTimeout(() => { try { t.select(); } catch (e) {} }, 0);
+    });
     $("#days").addEventListener("change", ev => {
       const t = ev.target; if (!t.matches("input[data-f]") || t.dataset.f === "split") return;
       const el = t.closest("details.day"), pe = t.closest(".part"); if (!el || !pe) return;
@@ -758,6 +766,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       if (b.classList.contains("sym")) {
         const p = day.p[+b.closest(".part").dataset.part], f = b.dataset.f;
         p[f] = p[f] === b.dataset.v ? "" : b.dataset.v;
+        if (p[f] && !p.s && !p.e) {
+          if (p[f] === "○") { p.s = "8:00"; p.e = "17:00"; }
+          else if (p[f] === "⊖") { p.s = "20:00"; p.e = "05:00"; }
+        }
         refreshDay(d); refreshTotals(); touch(); return;
       }
       if (b.dataset.act === "clear") { dday(d); mdata().days[d] = emptyDay(); refreshDay(d); refreshTotals(); touch(); }
