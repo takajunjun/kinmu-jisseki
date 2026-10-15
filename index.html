@@ -399,6 +399,15 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       </div>
     </div>`;
   }
+  let clip = null;
+  function updPaste() {
+    $$(".pasteBtn").forEach(bt => {
+      const own = bt.closest("details.day");
+      const same = clip && own && +own.dataset.d === clip.d;
+      bt.disabled = !clip || same;
+      bt.textContent = clip ? (same ? "（コピー元）" : `貼り付け（${clip.d}日の内容）`) : "貼り付け";
+    });
+  }
   function buildDays() {
     const n = dim(), wrap = $("#days");
     const today = new Date();
@@ -411,6 +420,8 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
           <div class="dtools">
             <label class="chk"><input type="checkbox" data-f="split"> 昼夜の連勤（1列を2分割）</label>
             <button class="btn sub small" type="button" data-act="prev">前日と同じ</button>
+            <button class="btn sub small" type="button" data-act="copy">この日をコピー</button>
+            <button class="btn sub small pasteBtn" type="button" data-act="paste" disabled>貼り付け</button>
             <button class="btn sub small" type="button" data-act="clear">この日を消す</button>
           </div>
           ${partHTML(0)}${partHTML(1)}
@@ -418,6 +429,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     }
     wrap.innerHTML = h;
     for (let d = 1; d <= n; d++) refreshDay(d);
+    updPaste();
   }
   function dayEl(d) { return $(`details.day[data-d="${d}"]`); }
   function refreshDay(d) {
@@ -595,6 +607,12 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
           c = cut(R.km); drawText(ctx, p.km, c.x0, c.x1, c.y0, c.y1, half ? 26 : 38, 1);
         }
       });
+      if (day.split) {
+        const r0 = wantAct && !wantPlan ? R.act : R.plan, r1 = wantAct ? R.km : R.plan;
+        const a = cellRect(d, r0), z = cellRect(d, r1), mx = (a.x0 + a.x1) / 2;
+        ctx.save(); ctx.strokeStyle = "#000"; ctx.lineWidth = 2.5; ctx.beginPath();
+        ctx.moveTo(mx, a.y0 + 4); ctx.lineTo(mx, z.y1 - 4); ctx.stroke(); ctx.restore();
+      }
     }
     if (tot) {
       const t = finalTotals();
@@ -773,6 +791,15 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
         refreshDay(d); refreshTotals(); touch(); return;
       }
       if (b.dataset.act === "clear") { dday(d); mdata().days[d] = emptyDay(); refreshDay(d); refreshTotals(); touch(); }
+      if (b.dataset.act === "copy") {
+        clip = { d, data: JSON.stringify(dday(d)) }; updPaste();
+        setStatus(`${d}日の内容をコピーしました。貼り付けたい日の「貼り付け」を押してください`); return;
+      }
+      if (b.dataset.act === "paste") {
+        if (!clip || clip.d === d) return;
+        mdata().days[d] = JSON.parse(clip.data); refreshDay(d); refreshTotals(); touch();
+        setStatus(`${clip.d}日の内容を${d}日に貼り付けました`); return;
+      }
       if (b.dataset.act === "prev" && d > 1) {
         const src = dday(d - 1); mdata().days[d] = JSON.parse(JSON.stringify(src)); refreshDay(d); refreshTotals(); touch();
       }
