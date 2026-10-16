@@ -190,12 +190,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     <div class="card">
       <h2>計</h2>
       <div class="tot">
-        <label class="field"><span>予定（日数）</span><input id="tPlan" type="text" inputmode="decimal"></label>
-        <label class="field"><span>実績（日数）</span><input id="tAct" type="text" inputmode="decimal"></label>
         <label class="field"><span>TEL（合計）</span><input id="tTel" type="text" inputmode="decimal"></label>
         <label class="field"><span>km（合計）</span><input id="tKm" type="text" inputmode="decimal"></label>
       </div>
-      <p class="legend" style="margin:8px 0 0">空欄のときは入力内容から自動で数えます（○⊖◎を勤務日として数え、TELとkmは合計）。数字を直接入れるとそちらが優先されます。</p>
+      <p class="legend" style="margin:8px 0 0">空欄のときは入力内容から自動で合計します（TELとkm）。数字を直接入れるとそちらが優先されます。</p>
     </div>
   </section>
 
@@ -494,7 +492,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
   }
   function refreshTotals() {
     const a = autoTotals(), t = mdata().tot;
-    for (const k of ["plan", "act", "tel", "km"]) {
+    for (const k of ["tel", "km"]) {
       const el = $("#t" + k[0].toUpperCase() + k.slice(1));
       el.placeholder = a[k];
       if (document.activeElement !== el) el.value = t[k] || "";
@@ -616,10 +614,8 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     }
     if (tot) {
       const t = finalTotals();
-      if (wantPlan) { const c = totalRect(R.plan); drawText(ctx, t.plan, c.x0, c.x1, c.y0, c.y1, 38, 1); }
       if (wantAct) {
-        let c = totalRect(R.act); drawText(ctx, t.act, c.x0, c.x1, c.y0, c.y1, 38, 1);
-        c = totalRect(R.tel); drawText(ctx, t.tel, c.x0, c.x1, c.y0, c.y1, 38, 1);
+        let c = totalRect(R.tel); drawText(ctx, t.tel, c.x0, c.x1, c.y0, c.y1, 38, 1);
         c = totalRect(R.km); drawText(ctx, t.km, c.x0, c.x1, c.y0, c.y1, 38, 1);
       }
     }
@@ -828,7 +824,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     $("#nextM").addEventListener("click", () => setYM(state.meta.y, state.meta.m + 1));
     $("#branch").addEventListener("input", e => { state.meta.branch = e.target.value; touch(); });
     $("#pname").addEventListener("input", e => { state.meta.name = e.target.value; touch(); });
-    [["tPlan", "plan"], ["tAct", "act"], ["tTel", "tel"], ["tKm", "km"]].forEach(([id, k]) => $("#" + id).addEventListener("input", e => { mdata().tot[k] = e.target.value; touch(); }));
+    [["tTel", "tel"], ["tKm", "km"]].forEach(([id, k]) => $("#" + id).addEventListener("input", e => { mdata().tot[k] = e.target.value; touch(); }));
 
     $("#clearSample").addEventListener("click", () => {
       const keepName = "";
