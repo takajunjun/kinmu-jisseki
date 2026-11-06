@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>私有車の使用入力</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+/* 配置: 上にタブ（入力／申請書／設定）。入力は追加フォームと今月の一覧、確定した距離は勤務実績表のkmへ渡す。 */
+:root {
+  --bg: #eef1f5; --surface: #ffffff; --surface-2: #f5f7fa; --ink: #17202e; --muted: #566176; --line: #cfd6e1;
+  --accent: #1c4fcf; --accent-ink: #ffffff; --accent-soft: #e3ebff; --sun: #c0342a; --ok: #17703f;
+  --warn-bg: #fff4d6; --warn-ink: #5f4300;
+  --font: "BIZ UDPGothic", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151c; --surface: #1a202b; --surface-2: #222a37; --ink: #e9edf4; --muted: #a2adc0; --line: #333e50;
+    --accent: #86a6ff; --accent-ink: #0d1320; --accent-soft: #24304f; --sun: #ff8f84; --ok: #6fd69b;
+    --warn-bg: #3a3014; --warn-ink: #ffe3a0; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151c; --surface: #1a202b; --surface-2: #222a37; --ink: #e9edf4; --muted: #a2adc0; --line: #333e50;
+  --accent: #86a6ff; --accent-ink: #0d1320; --accent-soft: #24304f; --sun: #ff8f84; --ok: #6fd69b;
+  --warn-bg: #3a3014; --warn-ink: #ffe3a0; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 20px/1.55 var(--font); padding-inline: 16px; padding-block: 12px 48px; }
+.wrap { max-width: 1040px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
+.wrap > * { min-width: 0; }
+.wrap > .wrap { width: 100%; }
+h1 { font-size: 1.35rem; margin: 0; line-height: 1.3; }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.status { color: var(--muted); font-size: .8rem; }
+.tabs { display: flex; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; }
+.tab { flex: 1; min-height: 54px; border: 2px solid var(--line); background: var(--surface); border-radius: 10px; font-weight: 700; }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 9rem; }
+.field > span, .lbl { font-size: .8rem; color: var(--muted); letter-spacing: .04em; }
+input[type=text], input[type=number], input[type=date], select {
+  min-height: 54px; width: 100%; min-width: 0; padding: 6px 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); font-variant-numeric: tabular-nums;
+}
+input[type=checkbox] { width: 30px; height: 30px; accent-color: var(--accent); flex: none; }
+.btn { min-height: 54px; padding: 8px 20px; border-radius: 10px; border: 2px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.btn.sub { background: var(--surface); color: var(--accent); }
+.btn.small { min-height: 46px; padding: 4px 14px; font-size: .85rem; }
+.btn:disabled { opacity: .5; cursor: default; }
+.chk { display: flex; align-items: center; gap: 10px; min-height: 46px; }
+.legend { color: var(--muted); font-size: .8rem; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ym { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; align-items: end; width: 100%; max-width: 30rem; }
+.ym .field { flex: none; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { min-height: 54px; padding: 6px 22px; border: 2px solid var(--line); background: var(--surface); border-radius: 10px; font-weight: 700; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 12px; }
+.calc { background: var(--surface-2); border-radius: 8px; padding: 10px 14px; font-weight: 700; min-height: 54px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 16px; }
+.calc.err { color: var(--sun); }
+.rec { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); }
+.rec.edit { border-color: var(--accent); background: var(--accent-soft); }
+.rec .h { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-weight: 700; }
+.rec .h .k { background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 0 .5em; font-size: .85rem; }
+.rec .h .k.b { background: #a0580a; color: #fff; }
+.rec .d { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tbl th, .tbl td { border: 1px solid var(--line); padding: 6px 10px; text-align: right; font-variant-numeric: tabular-nums; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tbl th { background: var(--surface-2); }
+.pv { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.pv canvas { display: block; width: 100%; min-width: 760px; height: auto; }
+textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid var(--line); border-radius: 8px; background: var(--surface); font: 400 .8rem/1.4 ui-monospace, Menlo, Consolas, monospace; resize: vertical; }
+.msg { font-size: .85rem; color: var(--muted); min-height: 1.5em; }
+.msg.err { color: var(--sun); }
+.msg.ok { color: var(--ok); }
+.note { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 14px; font-size: .85rem; }
+[hidden] { display: none !important; }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <h1>私有車の使用入力</h1>
+    <span class="status"><a href="index.html">← 勤務実績表へ</a>　<span id="saveState"></span></span>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-in" aria-selected="true" aria-controls="p-in" type="button">入力</button>
+    <button class="tab" role="tab" id="tab-form" aria-selected="false" aria-controls="p-form" type="button">申請書</button>
+    <button class="tab" role="tab" id="tab-set" aria-selected="false" aria-controls="p-set" type="button">設定</button>
+  </div>
+
+  <!-- 入力 -->
+  <section id="p-in" role="tabpanel" aria-labelledby="tab-in" class="wrap" style="gap:16px">
+    <div class="card">
+      <div class="ym">
+        <label class="field"><span>年</span><input id="year" type="number" inputmode="numeric" min="2020" max="2099"></label>
+        <label class="field"><span>月</span><select id="month"></select></label>
+        <button class="btn sub small" id="prevM" type="button">前の月</button>
+        <button class="btn sub small" id="nextM" type="button">次の月</button>
+      </div>
+    </div>
+
+    <div class="card" id="formCard" style="display:flex;flex-direction:column;gap:14px">
+      <h2 id="formTitle">使用を追加</h2>
+      <div class="grid">
+        <label class="field"><span>使用日</span><input id="fDate" type="date"></label>
+        <div class="field"><span>区分</span>
+          <div class="seg" id="fKind"><button type="button" data-k="car" aria-pressed="true">車</button><button type="button" data-k="bike" aria-pressed="false">バイク</button></div>
+        </div>
+      </div>
+      <div class="grid">
+        <label class="field"><span>開始時オドメーター(km)</span><input id="fB" type="text" inputmode="decimal" autocomplete="off"></label>
+        <label class="field"><span>終了時オドメーター(km)</span><input id="fC" type="text" inputmode="decimal" autocomplete="off"></label>
+        <label class="field"><span>距離(km)　※メーターが無いときだけ</span><input id="fD" type="text" inputmode="decimal" autocomplete="off"></label>
+      </div>
+      <div class="calc" id="fCalc" role="status">走行距離：－</div>
+      <div class="grid">
+        <label class="field"><span>出発地</span><input id="fDep" type="text" list="dlDep" autocomplete="off"></label>
+        <label class="field"><span>目的地</span><input id="fDst" type="text" list="dlDst" autocomplete="off"></label>
+      </div>
+      <label class="field"><span>業務目的・内容</span><input id="fPur" type="text" list="dlPur" autocomplete="off"></label>
+      <div class="grid">
+        <label class="field"><span>使用開始時刻（0700 のように入力）</span><input id="fTs" type="text" inputmode="numeric" placeholder="07:00" autocomplete="off"></label>
+        <label class="field"><span>使用終了時刻</span><input id="fTe" type="text" inputmode="numeric" placeholder="18:00" autocomplete="off"></label>
+        <label class="chk" style="align-self:end"><input id="fNext" type="checkbox"> 終了は翌日</label>
+      </div>
+      <div class="grid">
+        <div class="field"><span>高速道路等</span>
+          <div class="seg" id="fHw"><button type="button" data-v="無" aria-pressed="true">無</button><button type="button" data-v="有" aria-pressed="false">有</button></div>
+        </div>
+        <label class="field"><span>備考（高速が「有」のときは内容を書く）</span><input id="fNote" type="text" autocomplete="off"></label>
+      </div>
+      <div class="btns">
+        <button class="btn" type="button" id="fAdd">追加する</button>
+        <button class="btn sub" type="button" id="fCancel" hidden>やめる</button>
+      </div>
+      <div class="msg" id="fMsg" role="status"></div>
+    </div>
+
+    <div class="card">
+      <h2 id="listTitle">今月の使用</h2>
+      <div id="recList" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div id="sumBox" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card" id="syncCard">
+      <h2>勤務実績表のkmに送る</h2>
+      <p class="legend" style="margin:0 0 8px">日ごとの走行距離（車とバイクの合計）です。「確定」を押すと、勤務実績表を開いたときに、その日のkmに自動で入ります。</p>
+      <div id="dayKm"></div>
+      <div class="btns" style="margin-top:12px">
+        <button class="btn" type="button" id="confirmKm">この距離で確定する</button>
+        <a class="btn sub" href="index.html">勤務実績表を開く</a>
+      </div>
+      <div class="msg" id="syncMsg" role="status"></div>
+    </div>
+  </section>
+
+  <!-- 申請書 -->
+  <section id="p-form" role="tabpanel" aria-labelledby="tab-form" class="wrap" style="gap:16px" hidden>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div class="lbl">プレビュー</div>
+        <div class="seg" id="pvKind"><button type="button" data-k="car" aria-pressed="true">車</button><button type="button" data-k="bike" aria-pressed="false">バイク</button></div>
+      </div>
+      <div>
+        <div class="lbl">PDFに入れる申請書</div>
+        <label class="chk"><input type="checkbox" id="oCar" checked> 車</label>
+        <label class="chk"><input type="checkbox" id="oBike" checked> バイク</label>
+        <div class="legend" id="oHint"></div>
+      </div>
+    </div>
+    <div class="pv"><canvas id="pv" width="1240" height="877" aria-label="申請書のプレビュー"></canvas></div>
+    <div class="card">
+      <h2>印刷のしかた</h2>
+      <ol style="margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:4px">
+        <li>「PDFを保存」を押して保存する</li>
+        <li>Chrome や Acrobat で開いて、A4（横）で印刷する</li>
+        <li>所属長の承認印は、印刷した用紙に押す</li>
+      </ol>
+    </div>
+    <div class="btns"><button class="btn" id="savePdf" type="button">PDFを保存</button></div>
+    <div class="msg" id="pdfMsg" role="status"></div>
+  </section>
+
+  <!-- 設定 -->
+  <section id="p-set" role="tabpanel" aria-labelledby="tab-set" class="wrap" style="gap:16px" hidden>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <h2>申請者の情報</h2>
+      <div class="grid">
+        <label class="field"><span>所属</span><input id="sBranch" type="text" autocomplete="off"></label>
+        <label class="field"><span>申請者</span><input id="sName" type="text" autocomplete="off"></label>
+        <label class="field"><span>車両所有者</span><input id="sOwner" type="text" autocomplete="off"></label>
+      </div>
+      <label class="field" style="max-width:16rem"><span>申請日（この月の申請書に印字）</span><input id="sApp" type="date"></label>
+      <div class="legend">申請日は、空にすると月末の日付になります。</div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <h2>車</h2>
+      <div class="grid">
+        <label class="field"><span>車名・車種</span><input id="cModel" type="text" autocomplete="off"></label>
+        <label class="field"><span>登録番号</span><input id="cPlate" type="text" autocomplete="off"></label>
+        <label class="field"><span>単価（円/km）</span><input id="cRate" type="text" inputmode="decimal" autocomplete="off"></label>
+      </div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <h2>バイク</h2>
+      <div class="grid">
+        <label class="field"><span>車名・車種</span><input id="bModel" type="text" autocomplete="off"></label>
+        <label class="field"><span>登録番号</span><input id="bPlate" type="text" autocomplete="off"></label>
+        <label class="field"><span>単価（円/km）</span><input id="bRate" type="text" inputmode="decimal" autocomplete="off"></label>
+      </div>
+      <div class="legend">単価は、普通車＝30円、軽自動車＝25円、バイク・原付＝20円です。</div>
+    </div>
+    <div class="card">
+      <h2>データの保存</h2>
+      <p class="legend" style="margin:0 0 8px">入力した内容は、この端末のこのページの中にだけ保存されます。別の端末へ移すときは、書き出して読み込みます。</p>
+      <div class="btns">
+        <button class="btn" type="button" id="exportJson">データを書き出す（メモ帳用）</button>
+        <label class="btn sub">データを読み込む<input id="importJson" type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
+      </div>
+      <div class="msg" id="dataMsg" role="status"></div>
+      <div style="margin-top:14px">
+        <label for="jsonIn" style="display:block;font-weight:700;margin-bottom:6px">メモ帳の内容をここに貼り付け</label>
+        <p class="legend" style="margin:0 0 8px">メモ帳で全部コピーして、下の枠に貼り付けると、自動で読み込みます。</p>
+        <textarea id="jsonIn" aria-label="メモ帳の内容を貼り付け" placeholder="ここに貼り付け"></textarea>
+      </div>
+    </div>
+  </section>
+</div>
+
+<datalist id="dlDep"></datalist>
+<datalist id="dlDst"></datalist>
+<datalist id="dlPur"></datalist>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(() => {
+  "use strict";
+  const KEY = "shayusha-v1";        // このページの保存
+  const SYNC = "shayusha-km-v1";    // 勤務実績表へ渡す「確定した距離」
+  const FONT = '"BIZ UDPGothic","Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif';
+  const DOW = ["日", "月", "火", "水", "木", "金", "土"];
+  const KIND = { car: "車", bike: "バイク" };
+  const ROWS_PER_PAGE = 15;
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const pad = n => String(n).padStart(2, "0");
+  const now = new Date();
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  let state = {
+    y: now.getFullYear(), m: now.getMonth() + 1,
+    prof: { branch: "益田", name: "髙畑　潤", owner: "髙畑　潤",
+      car: { model: "セレナ", plate: "島根300ま461", rate: "30" },
+      bike: { model: "", plate: "1　島根　く　8643", rate: "20" } },
+    appDate: {}, recs: [], nextId: 1, confirmed: {}, lastDep: "自宅"
+  };
+  const ym = () => `${state.y}-${pad(state.m)}`;
+  const dim = () => new Date(state.y, state.m, 0).getDate();
+
+  /* ---------- 数値・時刻 ---------- */
+  function toNum(s) {
+    if (s === "" || s == null) return NaN;
+    const t = String(s).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 65248)).replace(/[．。]/g, ".").replace(/[,，\s]/g, "");
+    return t === "" ? NaN : Number(t);
+  }
+  const fmtKm = n => Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+  const fmt0 = n => Number(n).toLocaleString("en-US", { maximumFractionDigits: 1 });
+  const fmt1 = n => Number(n).toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  function normTime(v) {
+    const t = String(v).trim().replace(/[：.]/g, ":").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 65248));
+    if (!t) return "";
+    let m = t.match(/^(\d{1,2}):(\d{2})$/); if (m) return `${pad(+m[1])}:${m[2]}`;
+    const d = t.replace(/\D/g, "");
+    if (d.length === 3) return `${pad(+d[0])}:${d.slice(1)}`;
+    if (d.length === 4) return `${d.slice(0, 2)}:${d.slice(2)}`;
+    if (d.length <= 2 && d) return `${pad(+d)}:00`;
+    return t;
+  }
+  function distOf(r) {
+    const b = toNum(r.b), c = toNum(r.c), d = toNum(r.d);
+    if (!isNaN(b) && !isNaN(c)) return c >= b ? c - b : NaN;
+    return isNaN(d) ? NaN : d;
+  }
+  const rateOf = k => { const v = toNum(state.prof[k].rate); return isNaN(v) ? 0 : v; };
+  const timeText = r => (r.ts || r.te) ? `${r.ts || ""}～${r.te ? (r.next ? "翌" : "") + r.te : ""}` : "";
+  const dayOf = r => +r.date.slice(8, 10);
+  function monthRecs() {
+    return state.recs.filter(r => r.date.startsWith(ym()))
+      .sort((a, b) => a.date.localeCompare(b.date) || (a.kind === b.kind ? a.id - b.id : (a.kind === "car" ? -1 : 1)));
+  }
+  function dayKm() {
+    const out = {};
+    monthRecs().forEach(r => { const d = distOf(r); if (!isNaN(d)) out[dayOf(r)] = Math.round(((out[dayOf(r)] || 0) + d) * 10) / 10; });
+    return out;
+  }
+
+  /* ---------- 保存 ---------- */
+  let saveTimer = 0;
+  const setStatus = t => { $("#saveState").textContent = t; };
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const o = JSON.parse(raw);
+        if (o && Array.isArray(o.recs)) {
+          state = Object.assign(state, o);
+          state.prof = Object.assign({}, state.prof, o.prof);
+          state.prof.car = Object.assign({}, state.prof.car, (o.prof || {}).car);
+          state.prof.bike = Object.assign({}, state.prof.bike, (o.prof || {}).bike);
+          return true;
+        }
+      }
+    } catch (e) { /* 読めなくても動かす */ }
+    return false;
+  }
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); setStatus("この端末に保存しました"); }
+      catch (e) { setStatus("自動保存できません。設定からデータを書き出してください"); }
+    }, 250);
+  }
+
+  /* ---------- 画面: 入力 ---------- */
+  let editId = 0, kind = "car", hw = "無";
+  const pressSeg = (sel, attr, val) => $$(sel + " button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset[attr] === val)));
+  function lastOdo(k) {
+    const l = state.recs.filter(r => r.kind === k && !isNaN(toNum(r.c))).sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id).pop();
+    return l ? l.c : "";
+  }
+  function defaultDate() {
+    return (state.y === now.getFullYear() && state.m === now.getMonth() + 1) ? ymd(now) : `${ym()}-01`;
+  }
+  function resetForm(keep) {
+    editId = 0; $("#formTitle").textContent = "使用を追加"; $("#fAdd").textContent = "追加する"; $("#fCancel").hidden = true;
+    $("#formCard").style.outline = "";
+    if (!keep) $("#fDate").value = defaultDate();
+    $("#fB").value = lastOdo(kind); $("#fC").value = ""; $("#fD").value = "";
+    $("#fPur").value = ""; $("#fTs").value = ""; $("#fTe").value = ""; $("#fNext").checked = false; $("#fNote").value = "";
+    $("#fDep").value = state.lastDep || "自宅"; $("#fDst").value = "";
+    hw = "無"; pressSeg("#fHw", "v", hw); calcPreview();
+  }
+  function formRec() {
+    return { date: $("#fDate").value, kind, b: $("#fB").value.trim(), c: $("#fC").value.trim(), d: $("#fD").value.trim(),
+      dep: $("#fDep").value.trim(), dst: $("#fDst").value.trim(), pur: $("#fPur").value.trim(),
+      ts: normTime($("#fTs").value), te: normTime($("#fTe").value), next: $("#fNext").checked, hw, note: $("#fNote").value.trim() };
+  }
+  function calcPreview() {
+    const r = formRec(), box = $("#fCalc"), b = toNum(r.b), c = toNum(r.c);
+    box.className = "calc";
+    if (!isNaN(b) && !isNaN(c) && c < b) { box.className = "calc err"; box.textContent = "終了のメーターが開始より小さくなっています"; return; }
+    const d = distOf(r);
+    box.textContent = isNaN(d) ? "走行距離：－" : `走行距離：${fmtKm(d)} km　／　金額：${fmt0(d * rateOf(kind))} 円`;
+  }
+  function addOrUpdate() {
+    const r = formRec(), m = $("#fMsg"); m.className = "msg err";
+    if (!r.date) { m.textContent = "使用日を入れてください。"; return; }
+    const b = toNum(r.b), c = toNum(r.c);
+    if (!isNaN(b) && !isNaN(c) && c < b) { m.textContent = "終了のメーターが開始より小さくなっています。"; return; }
+    if (isNaN(distOf(r))) { m.textContent = "メーター（開始・終了）か、距離を入れてください。"; return; }
+    if (r.dep) state.lastDep = r.dep;
+    if (editId) { const i = state.recs.findIndex(x => x.id === editId); if (i >= 0) state.recs[i] = Object.assign({ id: editId }, r); }
+    else state.recs.push(Object.assign({ id: state.nextId++ }, r));
+    // 入れた日の月を表示する
+    const y = +r.date.slice(0, 4), mo = +r.date.slice(5, 7);
+    if (y !== state.y || mo !== state.m) { state.y = y; state.m = mo; $("#year").value = y; $("#month").value = mo; }
+    const wasEdit = !!editId, dd = r.date;
+    save(); resetForm(true); $("#fDate").value = dd; fillLists(); renderAll();
+    m.className = "msg ok"; m.textContent = wasEdit ? "更新しました。" : "追加しました。続けて入れるときは、そのまま入力できます。";
+  }
+  function startEdit(id) {
+    const r = state.recs.find(x => x.id === id); if (!r) return;
+    editId = id; kind = r.kind; pressSeg("#fKind", "k", kind);
+    $("#fDate").value = r.date; $("#fB").value = r.b; $("#fC").value = r.c; $("#fD").value = r.d;
+    $("#fDep").value = r.dep; $("#fDst").value = r.dst; $("#fPur").value = r.pur; $("#fTs").value = r.ts; $("#fTe").value = r.te;
+    $("#fNext").checked = !!r.next; $("#fNote").value = r.note || ""; hw = r.hw || "無"; pressSeg("#fHw", "v", hw);
+    $("#formTitle").textContent = "使用を直す"; $("#fAdd").textContent = "更新する"; $("#fCancel").hidden = false;
+    $("#formCard").style.outline = "3px solid var(--accent)"; calcPreview(); renderList();
+    $("#formCard").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function renderList() {
+    const rs = monthRecs(), box = $("#recList");
+    $("#listTitle").textContent = `${state.m}月の使用（${rs.length}件）`;
+    if (!rs.length) { box.innerHTML = `<div class="legend">まだ入力がありません。上のフォームから追加してください。</div>`; return; }
+    box.innerHTML = rs.map(r => {
+      const d = distOf(r), dt = new Date(+r.date.slice(0, 4), +r.date.slice(5, 7) - 1, dayOf(r));
+      const route = [r.dep, r.dst].filter(Boolean).join(" → ");
+      return `<div class="rec${r.id === editId ? " edit" : ""}" data-id="${r.id}">
+        <div class="h"><span>${state.m}/${dayOf(r)}（${DOW[dt.getDay()]}）</span><span class="k${r.kind === "bike" ? " b" : ""}">${KIND[r.kind]}</span>
+          <span>${isNaN(d) ? "－" : fmtKm(d) + " km"}</span><span>${isNaN(d) ? "" : fmt0(d * rateOf(r.kind)) + " 円"}</span></div>
+        <div class="d">${esc([route, r.pur, timeText(r), r.hw === "有" ? "高速 有" : ""].filter(Boolean).join("　／　"))}</div>
+        <div class="btns"><button type="button" class="btn sub small" data-a="edit">直す</button>
+          <button type="button" class="btn sub small" data-a="del">消す</button></div></div>`;
+    }).join("");
+  }
+  function renderSummary() {
+    const rs = monthRecs(), rows = ["car", "bike"].map(k => {
+      const l = rs.filter(r => r.kind === k); let km = 0; l.forEach(r => { const d = distOf(r); if (!isNaN(d)) km += d; });
+      return { k, n: l.length, km, yen: km * rateOf(k) };
+    });
+    $("#sumBox").innerHTML = `<table class="tbl"><thead><tr><th>区分</th><th>件数</th><th>距離(km)</th><th>金額(円)</th></tr></thead><tbody>` +
+      rows.map(x => `<tr><td>${KIND[x.k]}</td><td>${x.n}</td><td>${fmt0(Math.round(x.km * 10) / 10)}</td><td>${fmt0(x.yen)}</td></tr>`).join("") +
+      `<tr><th>合計</th><th>${rows[0].n + rows[1].n}</th><th>${fmt0(Math.round((rows[0].km + rows[1].km) * 10) / 10)}</th><th>${fmt0(rows[0].yen + rows[1].yen)}</th></tr></tbody></table>`;
+  }
+  function renderSync() {
+    const m = dayKm(), ds = Object.keys(m).map(Number).sort((a, b) => a - b);
+    $("#dayKm").innerHTML = ds.length
+      ? `<table class="tbl"><thead><tr><th>日</th><th>走行距離(km)</th></tr></thead><tbody>${ds.map(d => `<tr><td>${state.m}月${d}日</td><td>${fmtKm(m[d])}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="legend">この月の距離はまだありません。</div>`;
+    const done = state.confirmed[ym()], cur = JSON.stringify(m), s = $("#syncMsg");
+    if (done === undefined) { s.className = "msg"; s.textContent = "まだ確定していません。"; }
+    else if (done === cur) { s.className = "msg ok"; s.textContent = "確定済みです。勤務実績表を開くと、kmに入ります。"; }
+    else { s.className = "msg err"; s.textContent = "確定したあとに変更があります。もう一度「この距離で確定する」を押してください。"; }
+  }
+  function confirmKm() {
+    const m = dayKm(); let all = {};
+    try { all = JSON.parse(localStorage.getItem(SYNC) || "{}") || {}; } catch (e) { all = {}; }
+    all.months = all.months || {}; all.months[ym()] = m; all.updated = Date.now();
+    try { localStorage.setItem(SYNC, JSON.stringify(all)); }
+    catch (e) { const s = $("#syncMsg"); s.className = "msg err"; s.textContent = "この環境では確定できません（保存が使えません）。"; return; }
+    state.confirmed[ym()] = JSON.stringify(m); save(); renderSync();
+    const n = Object.keys(m).length, s = $("#syncMsg"); s.className = "msg ok";
+    s.textContent = `${state.m}月の ${n} 日分を確定しました。勤務実績表を開くと、kmに入ります。`;
+  }
+  function fillLists() {
+    const uniq = k => [...new Set(state.recs.map(r => r[k]).filter(Boolean))];
+    const opt = a => a.map(v => `<option value="${esc(v)}">`).join("");
+    $("#dlDep").innerHTML = opt(uniq("dep")); $("#dlDst").innerHTML = opt(uniq("dst")); $("#dlPur").innerHTML = opt(uniq("pur"));
+  }
+  function renderAll() { renderList(); renderSummary(); renderSync(); updateHint(); if (!$("#p-form").hidden) drawPreview(); }
+
+  /* ---------- 申請書の描画（プレビューとPDFで共通） ---------- */
+  // 座標は「Excelの申請書をA4横に印刷した見た目」から測った値（70dpi換算のpx → 300dpi）
+  const K = 300 / 70, W = 3508, H = 2480;
+  const UNITS = [13, 16, 16, 12, 14, 14, 28, 18, 13, 9, 8.5, 24], TOTAL_U = UNITS.reduce((a, b) => a + b, 0);
+  const X0 = 17 * K, TW = 749 * K;
+  const XS = (() => { let a = [X0], s = 0; UNITS.forEach(u => { s += u; a.push(X0 + TW * s / TOTAL_U); }); return a; })();
+  const Y = { title: 38 * K, h1: 55 * K, h2: 72 * K, h3: 89 * K, lh0: 105 * K, d0: 131 * K, rh: 20.07 * K, tot: 447 * K,
+    note: 460 * K, cf0: 474 * K, cf1: 483 * K, cf2: 516 * K, n1: 530 * K, n2: 541 * K };
+  const GRAY = "#EDEDED", BLUE = "#D9EAF7";
+  const LW = 2.4;
+
+  function box(ctx, x0, y0, x1, y1, fill) {
+    if (fill) { ctx.fillStyle = fill; ctx.fillRect(x0, y0, x1 - x0, y1 - y0); }
+    ctx.strokeStyle = "#000"; ctx.lineWidth = LW; ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  }
+  // 1行・または2行に収まるように文字を縮めて置く
+  function put(ctx, text, x0, x1, y0, y1, o) {
+    o = o || {}; text = String(text == null ? "" : text); if (!text) return;
+    const pad = 8, w = x1 - x0 - pad * 2, h = y1 - y0, wt = o.bold ? 700 : 400, al = o.align || "left";
+    ctx.fillStyle = "#000"; ctx.textBaseline = "middle"; ctx.textAlign = al;
+    const ax = al === "center" ? (x0 + x1) / 2 : al === "right" ? x1 - pad : x0 + pad;
+    let size = o.size || 34, lines = text.split("\n");
+    const fits = (sz, ls) => { ctx.font = `${wt} ${sz}px ${FONT}`; return ls.every(l => ctx.measureText(l).width <= w); };
+    if (lines.length === 1) {
+      let sz = size; while (sz > 22 && !fits(sz, lines)) sz -= 1;
+      if (!fits(sz, lines) && h > sz * 2.1) {            // 2行に折り返す
+        sz = Math.min(size, 28); ctx.font = `${wt} ${sz}px ${FONT}`;
+        const ch = [...text]; let a = "", out = [];
+        ch.forEach(c => { if (ctx.measureText(a + c).width > w && a) { out.push(a); a = c; } else a += c; }); out.push(a);
+        while (out.length > 2) { sz -= 1; ctx.font = `${wt} ${sz}px ${FONT}`; out = []; a = ""; ch.forEach(c => { if (ctx.measureText(a + c).width > w && a) { out.push(a); a = c; } else a += c; }); out.push(a); if (sz < 18) break; }
+        lines = out.slice(0, 3);
+      }
+      size = sz;
+    } else { while (size > 18 && !fits(size, lines)) size -= 1; }
+    ctx.font = `${wt} ${size}px ${FONT}`;
+    const lh = size * 1.18, top = (y0 + y1) / 2 - lh * (lines.length - 1) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, ax, top + i * lh));
+  }
+
+  function drawForm(ctx, k, rows, pageNo, pages, scale) {
+    ctx.save(); ctx.scale(scale, scale);
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+    const P = state.prof, V = P[k], ap = state.appDate[ym()] || ymd(new Date(state.y, state.m, 0));
+    // タイトル
+    ctx.fillStyle = "#000"; ctx.font = `700 54px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("私有車業務使用申請書", W / 2, Y.title);
+    if (pages > 1) { ctx.font = `400 28px ${FONT}`; ctx.textAlign = "right"; ctx.fillText(`${pageNo} / ${pages}`, XS[12], Y.title); }
+    // 申請者の欄（2行）
+    const hdr = [
+      [["所属", 0, 1, 1], [P.branch, 1, 3, 0], ["申請者", 3, 4, 1], [P.name, 4, 6, 0], ["申請日", 6, 7, 1], [ap.replace(/-/g, "/"), 7, 9, 0], ["単価", 9, 10, 1, 1]],
+      [["車両所有者", 0, 1, 1], [P.owner, 1, 3, 0], ["車名・車種", 3, 4, 1], [V.model, 4, 6, 0], ["登録番号", 6, 7, 1], [V.plate, 7, 9, 0], [V.rate, 9, 10, 0, 1]]
+    ];
+    hdr.forEach((row, ri) => row.forEach(([t, a, b, lab, ctr]) => {
+      const y0 = ri ? Y.h2 : Y.h1, y1 = ri ? Y.h3 : Y.h2;
+      box(ctx, XS[a], y0, XS[b], y1, lab ? GRAY : null);
+      put(ctx, t, XS[a], XS[b], y0, y1, { size: 34, bold: !!lab, align: ctr ? "center" : "left" });
+    }));
+    // 明細の見出し
+    const heads = ["使用日", "使用開始時\nオドメーター(km)", "使用終了時\nオドメーター(km)", "走行距離\n(km)", "出発地", "目的地", "業務目的・内容", "使用時間\n（開始～終了）", "高速道路等\n有無", "距離\n金額", "所属長\n承認印", "備考"];
+    heads.forEach((t, i) => { box(ctx, XS[i], Y.lh0, XS[i + 1], Y.d0, BLUE); put(ctx, t, XS[i], XS[i + 1], Y.lh0, Y.d0, { size: 30, bold: true, align: "center" }); });
+    // 明細（15行）
+    let sumD = 0, sumJ = 0;
+    for (let i = 0; i < ROWS_PER_PAGE; i++) {
+      const y0 = Y.d0 + i * Y.rh, y1 = y0 + Y.rh, r = rows[i];
+      for (let c = 0; c < 12; c++) box(ctx, XS[c], y0, XS[c + 1], y1, null);
+      if (!r) continue;
+      const d = distOf(r), j = isNaN(d) ? NaN : d * rateOf(k);
+      if (!isNaN(d)) sumD += d; if (!isNaN(j)) sumJ += j;
+      const cell = (c, t, al) => put(ctx, t, XS[c], XS[c + 1], y0, y1, { size: 34, align: al || "left" });
+      cell(0, r.date.replace(/-/g, "/")); cell(1, isNaN(toNum(r.b)) ? "" : fmt0(toNum(r.b)), "right"); cell(2, isNaN(toNum(r.c)) ? "" : fmt0(toNum(r.c)), "right");
+      cell(3, isNaN(d) ? "" : fmt0(d), "right"); cell(4, r.dep); cell(5, r.dst); cell(6, r.pur); cell(7, timeText(r)); cell(8, r.hw === "有" ? "有" : (r.hw ? "無し" : ""));
+      cell(9, isNaN(j) ? "" : fmt1(j), "right"); cell(11, r.note || "");
+    }
+    // 合計
+    const yt0 = Y.d0 + ROWS_PER_PAGE * Y.rh;
+    for (let c = 0; c < 12; c++) box(ctx, XS[c], yt0, XS[c + 1], Y.tot, (c === 0 || c === 3 || c === 9) ? GRAY : null);
+    put(ctx, "合     計", XS[0], XS[1], yt0, Y.tot, { size: 34, bold: true, align: "center" });
+    put(ctx, fmt0(Math.round(sumD * 10) / 10), XS[3], XS[4], yt0, Y.tot, { size: 34, bold: true, align: "right" });
+    put(ctx, fmt0(Math.round(sumJ)), XS[9], XS[10], yt0, Y.tot, { size: 34, bold: true, align: "right" });
+    // 申請文
+    put(ctx, "上記のとおり、私有車を業務のために使用したことを申請します。", XS[0], XS[12], Y.tot, Y.cf0 - 6, { size: 34 });
+    // 確認欄
+    [[0, 3, "申請者確認", true], [3, 6, "所属長確認", true], [6, 9, "精算担当確認", false]].forEach(([a, b, t, sure]) => {
+      box(ctx, XS[a], Y.cf0, XS[b], Y.cf1, GRAY); put(ctx, t, XS[a], XS[b], Y.cf0, Y.cf1, { size: 30, bold: true });
+      box(ctx, XS[a], Y.cf1, XS[b], Y.cf2, null);
+      if (sure) { ctx.fillStyle = "#000"; ctx.font = `400 30px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText("確認しました", XS[a] + 8, Y.cf1 + 8); }
+    });
+    // 記載要領
+    ctx.fillStyle = "#000"; ctx.font = `400 28px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText("【記載要領】①使用の都度、使用日・オドメーター（開始・終了）・出発地・目的地・業務目的を記載してください。", XS[0], Y.n1);
+    ctx.fillText("②走行距離は「使用終了時オドメーター－使用開始時オドメーター」で自動計算します。③高速道路等を利用した場合は「有」を選択し、備考欄に内容を記載してください。", XS[0], Y.n2);
+    ctx.restore();
+  }
+  const pagesOf = k => {
+    const l = monthRecs().filter(r => r.kind === k), n = Math.max(1, Math.ceil(l.length / ROWS_PER_PAGE));
+    return Array.from({ length: n }, (_, i) => l.slice(i * ROWS_PER_PAGE, (i + 1) * ROWS_PER_PAGE));
+  };
+  async function ensureFonts() {
+    const txt = JSON.stringify(state) + "０１２３４５６７８９年月日私有車業務使用申請書所属申請者車両所有者名種登録番号単価合計確認しました";
+    try { await Promise.race([document.fonts.load(`700 30px "BIZ UDPGothic"`, txt), new Promise(r => setTimeout(r, 2500))]); } catch (e) { /* 代替フォントで続行 */ }
+  }
+  let pvKind = "car", pvToken = 0;
+  async function drawPreview() {
+    const tk = ++pvToken; await ensureFonts(); if (tk !== pvToken) return;
+    const cv = $("#pv"), pgs = pagesOf(pvKind);
+    drawForm(cv.getContext("2d"), pvKind, pgs[0], 1, pgs.length, cv.width / W);
+  }
+  function updateHint() {
+    const nc = monthRecs().filter(r => r.kind === "car").length, nb = monthRecs().filter(r => r.kind === "bike").length;
+    $("#oHint").textContent = `${state.m}月：車 ${nc}件、バイク ${nb}件。使用のない申請書は、チェックを外すと入りません。`;
+  }
+  const defaultChecks = () => {
+    const rs = monthRecs(), nc = rs.filter(r => r.kind === "car").length, nb = rs.filter(r => r.kind === "bike").length;
+    $("#oCar").checked = nc > 0 || nb === 0; $("#oBike").checked = nb > 0;
+  };
+
+  /* ---------- ファイル保存 ---------- */
+  function saveFile(name, blob) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name; a.rel = "noopener";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+  }
+  async function makePdf() {
+    const msg = $("#pdfMsg"); msg.className = "msg";
+    const kinds = ["car", "bike"].filter(k => $(k === "car" ? "#oCar" : "#oBike").checked);
+    if (!kinds.length) { msg.className = "msg err"; msg.textContent = "PDFに入れる申請書（車・バイク）を選んでください。"; return; }
+    msg.textContent = "PDFを作っています…"; await ensureFonts();
+    if (!window.jspdf) { msg.className = "msg err"; msg.textContent = "PDF作成の部品を読み込めませんでした。通信状況を確認して、ページを開き直してください。"; return; }
+    const { jsPDF } = window.jspdf, pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4", compress: true });
+    const PWt = pdf.internal.pageSize.getWidth(), PHt = pdf.internal.pageSize.getHeight();
+    let first = true;
+    for (const k of kinds) {
+      const pgs = pagesOf(k);
+      for (let i = 0; i < pgs.length; i++) {
+        const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+        drawForm(cv.getContext("2d"), k, pgs[i], i + 1, pgs.length, 1);
+        if (!first) pdf.addPage("a4", "landscape"); first = false;
+        pdf.addImage(cv.toDataURL("image/png"), "PNG", 0, 0, PWt, PHt, undefined, "FAST");
+      }
+    }
+    const nm = (state.prof.name || "").replace(/[\s\\\/:*?"<>|]+/g, "") || "氏名なし";
+    const name = `${nm}_私有車業務使用申請_${ym()}.pdf`;
+    try { saveFile(name, pdf.output("blob")); msg.className = "msg ok"; msg.textContent = `「${name}」をダウンロードしました。A4（横）で印刷してください。`; }
+    catch (e) { msg.className = "msg err"; msg.textContent = "保存できませんでした。もう一度お試しください。"; }
+  }
+
+  /* ---------- タブ・設定・初期化 ---------- */
+  function showTab(id) {
+    ["in", "form", "set"].forEach(k => { $("#p-" + k).hidden = k !== id; $("#tab-" + k).setAttribute("aria-selected", String(k === id)); });
+    if (id === "form") { defaultChecks(); updateHint(); drawPreview(); }
+    window.scrollTo({ top: 0 });
+  }
+  function fillSettings() {
+    const P = state.prof;
+    $("#sBranch").value = P.branch; $("#sName").value = P.name; $("#sOwner").value = P.owner; $("#sApp").value = state.appDate[ym()] || "";
+    $("#cModel").value = P.car.model; $("#cPlate").value = P.car.plate; $("#cRate").value = P.car.rate;
+    $("#bModel").value = P.bike.model; $("#bPlate").value = P.bike.plate; $("#bRate").value = P.bike.rate;
+  }
+  function importText(text) {
+    const m = $("#dataMsg"); m.className = "msg";
+    try {
+      const o = JSON.parse(text); if (!o || !Array.isArray(o.recs)) throw new Error("形式が違います");
+      state = Object.assign(state, o); state.confirmed = state.confirmed || {};
+      $("#year").value = state.y; $("#month").value = state.m; fillSettings(); fillLists(); resetForm(); renderAll(); save();
+      m.className = "msg ok"; m.textContent = "読み込みました。";
+    } catch (e) { m.className = "msg err"; m.textContent = "読み込めませんでした。このツールで書き出したデータを、まるごと貼り付けてください。"; }
+  }
+  function moveMonth(d) {
+    const t = new Date(state.y, state.m - 1 + d, 1); state.y = t.getFullYear(); state.m = t.getMonth() + 1;
+    $("#year").value = state.y; $("#month").value = state.m; fillSettings(); resetForm(); renderAll(); save();
+  }
+  function init() {
+    $("#month").innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join("");
+    const had = load();
+    $("#year").value = state.y; $("#month").value = state.m; fillSettings(); fillLists(); resetForm(); renderAll();
+    if (had) setStatus("この端末に保存した内容を開きました");
+
+    $$(".tab").forEach(t => t.addEventListener("click", () => showTab(t.id.slice(4))));
+    $("#year").addEventListener("change", () => { const v = +$("#year").value; if (v >= 2020 && v <= 2099) { state.y = v; fillSettings(); resetForm(); renderAll(); save(); } });
+    $("#month").addEventListener("change", () => { state.m = +$("#month").value; fillSettings(); resetForm(); renderAll(); save(); });
+    $("#prevM").addEventListener("click", () => moveMonth(-1));
+    $("#nextM").addEventListener("click", () => moveMonth(1));
+    $("#fKind").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; kind = b.dataset.k; pressSeg("#fKind", "k", kind); if (!editId && !$("#fC").value) $("#fB").value = lastOdo(kind); calcPreview(); });
+    $("#fHw").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; hw = b.dataset.v; pressSeg("#fHw", "v", hw); });
+    ["#fB", "#fC", "#fD"].forEach(s => $(s).addEventListener("input", calcPreview));
+    ["#fTs", "#fTe"].forEach(s => { $(s).addEventListener("change", () => { $(s).value = normTime($(s).value); }); $(s).addEventListener("focus", () => setTimeout(() => { if (document.activeElement === $(s)) $(s).select(); }, 0)); });
+    $("#fAdd").addEventListener("click", addOrUpdate);
+    $("#fCancel").addEventListener("click", () => { resetForm(); renderList(); $("#fMsg").textContent = ""; });
+    $("#recList").addEventListener("click", ev => {
+      const b = ev.target.closest("button[data-a]"); if (!b) return; const id = +b.closest(".rec").dataset.id;
+      if (b.dataset.a === "edit") startEdit(id);
+      else if (b.dataset.a === "del") {
+        if (b.dataset.sure) { state.recs = state.recs.filter(r => r.id !== id); if (editId === id) resetForm(); save(); fillLists(); renderAll(); }
+        else { b.dataset.sure = "1"; b.textContent = "本当に消す"; b.classList.remove("sub"); }
+      }
+    });
+    $("#confirmKm").addEventListener("click", confirmKm);
+    $("#pvKind").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; pvKind = b.dataset.k; pressSeg("#pvKind", "k", pvKind); drawPreview(); });
+    $("#savePdf").addEventListener("click", makePdf);
+    // 設定
+    const setP = (sel, fn) => $(sel).addEventListener("input", () => { fn($(sel).value); save(); calcPreview(); renderList(); renderSummary(); if (!$("#p-form").hidden) drawPreview(); });
+    setP("#sBranch", v => state.prof.branch = v); setP("#sName", v => state.prof.name = v); setP("#sOwner", v => state.prof.owner = v);
+    setP("#sApp", v => { if (v) state.appDate[ym()] = v; else delete state.appDate[ym()]; });
+    setP("#cModel", v => state.prof.car.model = v); setP("#cPlate", v => state.prof.car.plate = v); setP("#cRate", v => state.prof.car.rate = v);
+    setP("#bModel", v => state.prof.bike.model = v); setP("#bPlate", v => state.prof.bike.plate = v); setP("#bRate", v => state.prof.bike.rate = v);
+    // データの書き出し・読み込み
+    $("#exportJson").addEventListener("click", () => {
+      const nm = (state.prof.name || "").replace(/[\s\\\/:*?"<>|]+/g, "") || "氏名なし", m = $("#dataMsg");
+      const name = `${nm}_私有車使用データ_${ym()}.txt`;
+      try { saveFile(name, new Blob([JSON.stringify(state)], { type: "text/plain" })); m.className = "msg ok"; m.textContent = `「${name}」をダウンロードしました（メモ帳で開けます）。`; }
+      catch (e) { m.className = "msg err"; m.textContent = "書き出せませんでした。"; }
+    });
+    $("#importJson").addEventListener("change", ev => { const f = ev.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => importText(rd.result); rd.readAsText(f); ev.target.value = ""; });
+    $("#jsonIn").addEventListener("paste", () => setTimeout(() => { const t = $("#jsonIn"); if (t.value.trim()) { importText(t.value); t.value = ""; } }, 50));
+    $("#jsonIn").addEventListener("dragover", ev => ev.preventDefault());
+    $("#jsonIn").addEventListener("drop", ev => { const f = ev.dataTransfer && ev.dataTransfer.files[0]; if (!f) return; ev.preventDefault(); const rd = new FileReader(); rd.onload = () => importText(rd.result); rd.readAsText(f); });
+    document.addEventListener("focusin", ev => { const t = ev.target; if (t.matches && t.matches("#fB, #fC, #fD")) setTimeout(() => { try { if (document.activeElement === t) t.select(); } catch (e) { /* 何もしない */ } }, 0); });
+  }
+  init();
+  window.__sha = { state: () => state, drawForm, pagesOf, distOf, dayKm, W, H, setState: s => { state = s; } };
+})();
+</script>
+</body>
+</html>
