@@ -109,6 +109,7 @@ details[open] > summary .chev { transform: rotate(90deg); }
 mark.yk { padding: 0 .25em; border-radius: 3px; }
 input.yk { background: #fff7a8; }
 .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .tot { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 12px; }
 
 /* 印刷タブ */
@@ -157,6 +158,16 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
         <label class="field" style="flex-basis:12rem"><span>支社名</span><input id="branch" type="text" placeholder="益田"></label>
         <label class="field" style="flex-basis:14rem"><span>氏名</span><input id="pname" type="text" placeholder="高畑 潤"></label>
       </div>
+    </div>
+
+    <div class="card" id="shaCard">
+      <h2>私有車の距離</h2>
+      <p class="legend" style="margin:0 0 8px">私有車を使った距離は、別のページで入力して「確定」します。確定した距離が、その日のkmに入ります。</p>
+      <div class="btns">
+        <a class="btn" href="shayusha.html" id="shaLink">私有車の使用を入力する（別ページ）</a>
+        <button class="btn sub" type="button" id="pullKm">確定した距離を取り込む</button>
+      </div>
+      <div class="msg" id="kmMsg" role="status"></div>
     </div>
 
     <details class="card bulk" id="bulk">
@@ -745,6 +756,32 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     p[t.dataset.f] = t.value;
     refreshDay(d); refreshTotals(); touch();
   }
+  /* ---------- 私有車の距離を取り込む（別ページで確定した距離 → その日のkm） ---------- */
+  const SYNC = "shayusha-km-v1";
+  const kmText = v => { const n = Number(v); return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10); };
+  function pullKm(manual) {
+    const msg = $("#kmMsg"); msg.className = "msg";
+    let all = null; try { all = JSON.parse(localStorage.getItem(SYNC) || "null"); } catch (e) { /* 読めない */ }
+    const m = all && all.months && all.months[ym()];
+    if (!m) { if (manual) msg.textContent = "この月の、確定した距離はまだありません。別のページで確定してください。"; return; }
+    state.kmSync = state.kmSync || {}; const done = state.kmSync[ym()] = state.kmSync[ym()] || {};
+    const n = dim(), days = new Set(); let set = 0, cleared = 0;
+    Object.keys(m).forEach(k => {
+      const d = +k; if (!(d >= 1 && d <= n)) return;
+      const v = kmText(m[k]); if (!manual && done[d] === v) return;
+      dday(d).p[0].km = v; done[d] = v; set++; days.add(d);
+    });
+    Object.keys(done).forEach(k => {
+      if (k in m) return; const d = +k;
+      if (d >= 1 && d <= n) { const p = dday(d).p[0]; if (p.km === done[k]) { p.km = ""; cleared++; days.add(d); } }
+      delete done[k];
+    });
+    if (set || cleared) {
+      days.forEach(d => refreshDay(d)); refreshTotals(); touch();
+      msg.textContent = `私有車の距離を ${set} 日分、kmに入れました` + (cleared ? `（取り消し ${cleared} 日分）` : "") + "。";
+    } else if (manual) msg.textContent = "新しく入れる距離はありません（すべて取り込み済みです）。";
+  }
+
   function init() {
     // 月セレクト
     $("#month").innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join("");
@@ -758,11 +795,15 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     $("#offX").value = state.off.x; $("#offY").value = state.off.y;
     if (!state.hist.work.includes("有給")) state.hist.work.push("有給");
     fillDatalists(); buildDays(); refreshTotals();
+    pullKm(false);
+    $("#pullKm").addEventListener("click", () => pullKm(true));
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) pullKm(false); });
+    window.addEventListener("storage", ev => { if (ev.key === SYNC) pullKm(false); });
 
     $("#days").addEventListener("input", onDaysInput);
     document.addEventListener("focusin", ev => {
       const t = ev.target;
-      if (t.matches && t.matches('input[data-f="s"], input[data-f="e"], #bS, #bE')) setTimeout(() => { try { t.select(); } catch (e) {} }, 0);
+      if (t.matches && t.matches('input[data-f="s"], input[data-f="e"], #bS, #bE')) setTimeout(() => { try { if (document.activeElement === t) t.select(); } catch (e) {} }, 0);
     });
     $("#days").addEventListener("change", ev => {
       const t = ev.target; if (!t.matches("input[data-f]") || t.dataset.f === "split") return;
@@ -816,7 +857,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; }
       state.meta.y = y; state.meta.m = m;
       $("#year").value = y; $("#month").value = m;
-      buildDays(); refreshTotals(); touch();
+      buildDays(); refreshTotals(); touch(); $("#kmMsg").textContent = ""; pullKm(false);
     };
     $("#year").addEventListener("change", () => { const y = +$("#year").value; if (y >= 2020 && y <= 2099) setYM(y, state.meta.m); });
     $("#month").addEventListener("change", () => setYM(state.meta.y, +$("#month").value));
