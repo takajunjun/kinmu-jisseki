@@ -119,6 +119,11 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
         </div>
       </div>
       <div class="grid">
+        <label class="field"><span id="fModelLbl">車名・車種</span><input id="fModel" type="text" autocomplete="off"></label>
+        <label class="field"><span id="fPlateLbl">登録番号</span><input id="fPlate" type="text" autocomplete="off"></label>
+      </div>
+      <div class="legend" style="margin-top:-6px">車名・車種と登録番号は、1回入れれば保存されます（申請書に印字されます）。</div>
+      <div class="grid">
         <label class="field"><span>開始時オドメーター(km)</span><input id="fB" type="text" inputmode="decimal" autocomplete="off"></label>
         <label class="field"><span>終了時オドメーター(km)</span><input id="fC" type="text" inputmode="decimal" autocomplete="off"></label>
         <label class="field"><span>距離(km)　※メーターが無いときだけ</span><input id="fD" type="text" inputmode="decimal" autocomplete="off"></label>
@@ -201,6 +206,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
         <label class="field"><span>申請者</span><input id="sName" type="text" autocomplete="off"></label>
         <label class="field"><span>車両所有者</span><input id="sOwner" type="text" autocomplete="off"></label>
       </div>
+      <div class="legend" id="nameNote"></div>
       <label class="field" style="max-width:16rem"><span>申請日（この月の申請書に印字）</span><input id="sApp" type="date"></label>
       <div class="legend">申請日は、空にすると月末の日付になります。</div>
     </div>
@@ -327,15 +333,21 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     return false;
   }
   /* 初めて開く人は、勤務実績表に入れた氏名・支社名を引き継ぐ（同じ端末・同じブラウザのとき） */
+  let nameLocked = false;   // 勤務実績表に氏名があれば、申請者・車両所有者はそれに合わせる
   function inheritFromKinmu() {
     try {
       const k = JSON.parse(localStorage.getItem("kinmu-print-v1") || "null");
       if (!k || k.sample || !k.meta) return;
       const nm = (k.meta.name || "").trim();
-      if (nm && !state.prof.name) state.prof.name = nm;
-      if (nm && !state.prof.owner) state.prof.owner = nm;
+      if (nm) { state.prof.name = nm; state.prof.owner = nm; nameLocked = true; }
       if (k.meta.branch && !state.prof.branchSet) state.prof.branch = k.meta.branch;
     } catch (e) { /* 何もしない */ }
+  }
+  function syncVeh() {
+    const V = state.prof[kind] || {}, nm = kind === "car" ? "車" : "バイク";
+    if (!$("#fModel")) return;
+    $("#fModel").value = V.model || ""; $("#fPlate").value = V.plate || "";
+    $("#fModelLbl").textContent = `${nm}の車名・車種`; $("#fPlateLbl").textContent = `${nm}の登録番号`;
   }
   function updateProfHint() {
     const P = state.prof;
@@ -402,7 +414,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
   }
   function startEdit(id) {
     const r = state.recs.find(x => x.id === id); if (!r) return;
-    editId = id; kind = r.kind; pressSeg("#fKind", "k", kind);
+    editId = id; kind = r.kind; pressSeg("#fKind", "k", kind); syncVeh();
     $("#fDate").value = r.date; $("#fB").value = r.b; $("#fC").value = r.c; $("#fD").value = r.d;
     $("#fDep").value = r.dep; $("#fDst").value = r.dst; $("#fPur").value = r.pur; $("#fTs").value = r.ts; $("#fTe").value = r.te;
     $("#fNext").checked = !!r.next; $("#fNote").value = r.note || ""; hw = r.hw || "無"; pressSeg("#fHw", "v", hw);
@@ -617,7 +629,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
   }
   function fillSettings() {
     const P = state.prof;
-    $("#sBranch").value = P.branch; $("#sName").value = P.name; $("#sOwner").value = P.owner; $("#sApp").value = state.appDate[ym()] || "";
+    $("#sBranch").value = P.branch; $("#sName").value = P.name; $("#sOwner").value = P.owner;
+    $("#sName").readOnly = $("#sOwner").readOnly = nameLocked;
+    $("#nameNote").textContent = nameLocked ? "申請者と車両所有者は、勤務実績表に入れた氏名が自動で入ります（変えるときは勤務実績表の氏名を直してください）。" : "勤務実績表に氏名を入れると、ここに自動で入ります。";
+    syncVeh(); $("#sApp").value = state.appDate[ym()] || "";
     $("#cModel").value = P.car.model; $("#cPlate").value = P.car.plate; $("#cRate").value = P.car.rate;
     $("#bModel").value = P.bike.model; $("#bPlate").value = P.bike.plate; $("#bRate").value = P.bike.rate;
   }
@@ -646,7 +661,9 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     $("#month").addEventListener("change", () => { state.m = +$("#month").value; fillSettings(); resetForm(); renderAll(); save(); });
     $("#prevM").addEventListener("click", () => moveMonth(-1));
     $("#nextM").addEventListener("click", () => moveMonth(1));
-    $("#fKind").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; kind = b.dataset.k; pressSeg("#fKind", "k", kind); if (!editId && !$("#fC").value) $("#fB").value = lastOdo(kind); calcPreview(); });
+    $("#fKind").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; kind = b.dataset.k; pressSeg("#fKind", "k", kind); if (!editId && !$("#fC").value) $("#fB").value = lastOdo(kind); syncVeh(); calcPreview(); });
+    const vehIn = (sel, key) => $(sel).addEventListener("input", () => { state.prof[kind][key] = $(sel).value; const t = { model: kind === "car" ? "#cModel" : "#bModel", plate: kind === "car" ? "#cPlate" : "#bPlate" }[key]; $(t).value = $(sel).value; save(); updateProfHint(); if (!$("#p-form").hidden) drawPreview(); });
+    vehIn("#fModel", "model"); vehIn("#fPlate", "plate");
     $("#fHw").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; hw = b.dataset.v; pressSeg("#fHw", "v", hw); });
     ["#fB", "#fC", "#fD"].forEach(s => $(s).addEventListener("input", calcPreview));
     ["#fTs", "#fTe"].forEach(s => { $(s).addEventListener("change", () => { $(s).value = normTime($(s).value); }); $(s).addEventListener("focus", () => setTimeout(() => { if (document.activeElement === $(s)) $(s).select(); }, 0)); });
@@ -667,8 +684,8 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     const setP = (sel, fn) => $(sel).addEventListener("input", () => { fn($(sel).value); save(); updateProfHint(); updateHint(); calcPreview(); renderList(); renderSummary(); if (!$("#p-form").hidden) drawPreview(); });
     setP("#sBranch", v => { state.prof.branch = v; state.prof.branchSet = true; }); setP("#sName", v => state.prof.name = v); setP("#sOwner", v => state.prof.owner = v);
     setP("#sApp", v => { if (v) state.appDate[ym()] = v; else delete state.appDate[ym()]; });
-    setP("#cModel", v => state.prof.car.model = v); setP("#cPlate", v => state.prof.car.plate = v); setP("#cRate", v => state.prof.car.rate = v);
-    setP("#bModel", v => state.prof.bike.model = v); setP("#bPlate", v => state.prof.bike.plate = v); setP("#bRate", v => state.prof.bike.rate = v);
+    setP("#cModel", v => { state.prof.car.model = v; syncVeh(); }); setP("#cPlate", v => { state.prof.car.plate = v; syncVeh(); }); setP("#cRate", v => state.prof.car.rate = v);
+    setP("#bModel", v => { state.prof.bike.model = v; syncVeh(); }); setP("#bPlate", v => { state.prof.bike.plate = v; syncVeh(); }); setP("#bRate", v => state.prof.bike.rate = v);
     // データの書き出し・読み込み
     $("#exportJson").addEventListener("click", () => {
       const nm = (state.prof.name || "").replace(/[\s\\\/:*?"<>|]+/g, "") || "氏名なし", m = $("#dataMsg");
