@@ -715,6 +715,22 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     $("#jsonIn").addEventListener("dragover", ev => ev.preventDefault());
     $("#jsonIn").addEventListener("drop", ev => { const f = ev.dataTransfer && ev.dataTransfer.files[0]; if (!f) return; ev.preventDefault(); const rd = new FileReader(); rd.onload = () => importText(rd.result); rd.readAsText(f); });
     document.addEventListener("focusin", ev => { const t = ev.target; if (t.matches && t.matches("#fB, #fC, #fD")) setTimeout(() => { try { if (document.activeElement === t) t.select(); } catch (e) { /* 何もしない */ } }, 0); });
+    // 入力欄でEnterを押したら次の項目へ進む（日本語変換を確定するEnterでは進まない）
+    const flow = ["#fDate", "#fModel", "#fPlate", "#fB", "#fC", "#fD", "#fDep", "#fDst", "#fPur", "#fTs", "#fTe", "#fNote", "#fAdd"];
+    $("#formCard").addEventListener("keydown", ev => {
+      if (ev.key !== "Enter" || ev.isComposing) return;
+      const t = ev.target;
+      if (!(t instanceof HTMLInputElement)) return;
+      const i = flow.indexOf("#" + t.id);
+      if (i < 0 || i >= flow.length - 1) return;
+      ev.preventDefault();
+      if (t.id === "fTs" || t.id === "fTe") t.value = normTime(t.value);
+      let nxt = flow[i + 1];
+      // メーターで距離が出ているときは「距離（直接入力）」を飛ばす
+      if (t.id === "fC" && !$("#fD").value && !isNaN(distOf({ b: $("#fB").value, c: $("#fC").value, d: "" }))) nxt = "#fDep";
+      const el = $(nxt);
+      if (el) el.focus();
+    });
   }
   init();
   updateProfHint();
