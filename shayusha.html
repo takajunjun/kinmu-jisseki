@@ -97,6 +97,8 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     <button class="tab" role="tab" id="tab-set" aria-selected="false" aria-controls="p-set" type="button">設定</button>
   </div>
 
+  <div class="wrap" style="padding-bottom:0"><div id="profHint" class="msg err" hidden style="font-size:1.05rem"></div></div>
+
   <!-- 入力 -->
   <section id="p-in" role="tabpanel" aria-labelledby="tab-in" class="wrap" style="gap:16px">
     <div class="card">
@@ -259,9 +261,9 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
 
   let state = {
     y: now.getFullYear(), m: now.getMonth() + 1,
-    prof: { branch: "益田", name: "髙畑　潤", owner: "髙畑　潤",
-      car: { model: "セレナ", plate: "島根300ま461", rate: "30" },
-      bike: { model: "", plate: "1　島根　く　8643", rate: "20" } },
+    prof: { branch: "益田", name: "", owner: "",
+      car: { model: "", plate: "", rate: "30" },
+      bike: { model: "", plate: "", rate: "20" } },
     appDate: {}, recs: [], nextId: 1, confirmed: {}, lastDep: "自宅"
   };
   const ym = () => `${state.y}-${pad(state.m)}`;
@@ -313,15 +315,35 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       if (raw) {
         const o = JSON.parse(raw);
         if (o && Array.isArray(o.recs)) {
+          const def = state.prof;
           state = Object.assign(state, o);
-          state.prof = Object.assign({}, state.prof, o.prof);
-          state.prof.car = Object.assign({}, state.prof.car, (o.prof || {}).car);
-          state.prof.bike = Object.assign({}, state.prof.bike, (o.prof || {}).bike);
+          state.prof = Object.assign({}, def, o.prof);
+          state.prof.car = Object.assign({}, def.car, (o.prof || {}).car);
+          state.prof.bike = Object.assign({}, def.bike, (o.prof || {}).bike);
           return true;
         }
       }
     } catch (e) { /* 読めなくても動かす */ }
     return false;
+  }
+  /* 初めて開く人は、勤務実績表に入れた氏名・支社名を引き継ぐ（同じ端末・同じブラウザのとき） */
+  function inheritFromKinmu() {
+    try {
+      const k = JSON.parse(localStorage.getItem("kinmu-print-v1") || "null");
+      if (!k || k.sample || !k.meta) return;
+      const nm = (k.meta.name || "").trim();
+      if (nm && !state.prof.name) state.prof.name = nm;
+      if (nm && !state.prof.owner) state.prof.owner = nm;
+      if (k.meta.branch && !state.prof.branchSet) state.prof.branch = k.meta.branch;
+    } catch (e) { /* 何もしない */ }
+  }
+  function updateProfHint() {
+    const P = state.prof;
+    const miss = [];
+    if (!P.name) miss.push("申請者");
+    if (!P.car.plate && !P.bike.plate) miss.push("登録番号");
+    const el = $("#profHint");
+    if (el) { el.hidden = !miss.length; el.textContent = miss.length ? `初めに「設定」で ${miss.join("・")} を入れてください（1回入れれば、この端末に保存されます）。` : ""; }
   }
   function save() {
     clearTimeout(saveTimer);
@@ -438,7 +460,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     const opt = a => a.map(v => `<option value="${esc(v)}">`).join("");
     $("#dlDep").innerHTML = opt(uniq("dep")); $("#dlDst").innerHTML = opt(uniq("dst")); $("#dlPur").innerHTML = opt(uniq("pur"));
   }
-  function renderAll() { renderList(); renderSummary(); renderSync(); updateHint(); if (!$("#p-form").hidden) drawPreview(); }
+  function renderAll() { renderList(); renderSummary(); renderSync(); updateProfHint(); updateHint(); if (!$("#p-form").hidden) drawPreview(); }
 
   /* ---------- 申請書の描画（プレビューとPDFで共通） ---------- */
   // 座標は「Excelの申請書をA4横に印刷した見た目」から測った値（70dpi換算のpx → 300dpi）
@@ -615,6 +637,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
   function init() {
     $("#month").innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join("");
     const had = load();
+    inheritFromKinmu();
     $("#year").value = state.y; $("#month").value = state.m; fillSettings(); fillLists(); resetForm(); renderAll();
     if (had) setStatus("この端末に保存した内容を開きました");
 
@@ -641,8 +664,8 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     $("#pvKind").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; pvKind = b.dataset.k; pressSeg("#pvKind", "k", pvKind); drawPreview(); });
     $("#savePdf").addEventListener("click", makePdf);
     // 設定
-    const setP = (sel, fn) => $(sel).addEventListener("input", () => { fn($(sel).value); save(); calcPreview(); renderList(); renderSummary(); if (!$("#p-form").hidden) drawPreview(); });
-    setP("#sBranch", v => state.prof.branch = v); setP("#sName", v => state.prof.name = v); setP("#sOwner", v => state.prof.owner = v);
+    const setP = (sel, fn) => $(sel).addEventListener("input", () => { fn($(sel).value); save(); updateProfHint(); updateHint(); calcPreview(); renderList(); renderSummary(); if (!$("#p-form").hidden) drawPreview(); });
+    setP("#sBranch", v => { state.prof.branch = v; state.prof.branchSet = true; }); setP("#sName", v => state.prof.name = v); setP("#sOwner", v => state.prof.owner = v);
     setP("#sApp", v => { if (v) state.appDate[ym()] = v; else delete state.appDate[ym()]; });
     setP("#cModel", v => state.prof.car.model = v); setP("#cPlate", v => state.prof.car.plate = v); setP("#cRate", v => state.prof.car.rate = v);
     setP("#bModel", v => state.prof.bike.model = v); setP("#bPlate", v => state.prof.bike.plate = v); setP("#bRate", v => state.prof.bike.rate = v);
@@ -660,6 +683,7 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     document.addEventListener("focusin", ev => { const t = ev.target; if (t.matches && t.matches("#fB, #fC, #fD")) setTimeout(() => { try { if (document.activeElement === t) t.select(); } catch (e) { /* 何もしない */ } }, 0); });
   }
   init();
+  updateProfHint();
   window.__sha = { state: () => state, drawForm, pagesOf, distOf, dayKm, W, H, setState: s => { state = s; } };
 })();
 </script>
