@@ -248,10 +248,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     </div>
     <div class="card">
       <h2>データの保存</h2>
-      <p class="legend" style="margin:0 0 8px">入力した内容は、この端末のこのページの中にだけ保存されます。別の端末へ移すときは、書き出して読み込みます。</p>
+      <p class="legend" style="margin:0 0 8px">入力した内容は、この端末のこのページの中にだけ保存されます。書き出すと、勤務実績表と私有車の入力（距離・記録）が1つのファイルにまとまります。読み込むと両方が元に戻ります。別の端末へ移すときにも使えます。</p>
       <div class="btns">
-        <button class="btn" type="button" id="exportJson">データを書き出す（メモ帳用）</button>
-        <label class="btn sub" style="display:inline-flex;align-items:center">データを読み込む<input id="importJson" type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
+        <button class="btn" type="button" id="exportJson">まとめて書き出す（勤務実績表＋私有車）</button>
+        <label class="btn sub" style="display:inline-flex;align-items:center">まとめて読み込む<input id="importJson" type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
       </div>
       <div class="msg" id="dataMsg" role="status"></div>
       <div class="msg" id="dlState" role="status">ファイルの保存：確認中…</div>
@@ -893,14 +893,17 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     // 設定
     const off = () => { state.off.x = +$("#offX").value || 0; state.off.y = +$("#offY").value || 0; save(); };
     $("#offX").addEventListener("input", off); $("#offY").addEventListener("input", off);
+    // 勤務実績表と私有車（距離・記録）を1つにまとめて保存する
+    const rd1 = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
+    const bundleText = () => JSON.stringify({ bundle: "kinmu-shayusha-v1", kinmu: state, shayusha: rd1("shayusha-v1"), km: rd1(SYNC) });
     $("#exportJson").addEventListener("click", async () => {
       const m = $("#dataMsg"); m.className = "msg";
-      const name = `${(state.meta.name||"").replace(/[\s\\\/:*?"<>|]+/g, "") || "氏名なし"}_勤務実績表_${ym()}.txt`;
-      const blob = new Blob([JSON.stringify(state)], { type: "text/plain;charset=utf-8" });
+      const name = `${(state.meta.name||"").replace(/[\s\\\/:*?"<>|]+/g, "") || "氏名なし"}_勤務実績表と私有車_${ym()}.txt`;
+      const blob = new Blob([bundleText()], { type: "text/plain;charset=utf-8" });
       try {
         const r = await saveFile(name, blob);
         if (r === "unavailable") {
-          $("#jsonOut").value = JSON.stringify(state); $("#jsonBox").hidden = false;
+          $("#jsonOut").value = bundleText(); $("#jsonBox").hidden = false;
           $("#jsonOut").focus(); $("#jsonOut").select();
           m.className = "msg err"; m.textContent = "この画面ではファイルを保存できません。下の文字をコピーしてください。"; return;
         }
@@ -936,7 +939,12 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     function importText(text) {
       const m = $("#dataMsg"); m.className = "msg";
       try {
-        const o = JSON.parse(text);
+        let o = JSON.parse(text);
+        if (o && o.bundle === "kinmu-shayusha-v1") {   // まとめて保存したファイル：私有車側の分は端末に戻す
+          if (o.shayusha) localStorage.setItem("shayusha-v1", JSON.stringify(o.shayusha));
+          if (o.km) localStorage.setItem(SYNC, JSON.stringify(o.km));
+          o = o.kinmu;
+        }
         if (!o || !o.meta || !o.months) throw new Error("形式が違います");
         o.sample = false; state = Object.assign(state, o);
         $("#year").value = state.meta.y; $("#month").value = state.meta.m;

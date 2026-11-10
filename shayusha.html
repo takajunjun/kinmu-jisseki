@@ -229,10 +229,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     </div>
     <div class="card">
       <h2>データの保存</h2>
-      <p class="legend" style="margin:0 0 8px">入力した内容は、この端末のこのページの中にだけ保存されます。別の端末へ移すときは、書き出して読み込みます。</p>
+      <p class="legend" style="margin:0 0 8px">入力した内容は、この端末の中にだけ保存されます。書き出すと、勤務実績表と私有車の入力（距離・記録）が1つのファイルにまとまり、読み込むと両方が元に戻ります。</p>
       <div class="btns">
-        <button class="btn" type="button" id="exportJson">データを書き出す（メモ帳用）</button>
-        <label class="btn sub">データを読み込む<input id="importJson" type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
+        <button class="btn" type="button" id="exportJson">まとめて書き出す（勤務実績表＋私有車）</button>
+        <label class="btn sub">まとめて読み込む<input id="importJson" type="file" accept=".txt,.json,text/plain,application/json" hidden></label>
       </div>
       <div class="msg" id="dataMsg" role="status"></div>
       <div style="margin-top:14px">
@@ -639,8 +639,14 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
   function importText(text) {
     const m = $("#dataMsg"); m.className = "msg";
     try {
-      const o = JSON.parse(text); if (!o || !Array.isArray(o.recs)) throw new Error("形式が違います");
-      state = Object.assign(state, o); state.confirmed = state.confirmed || {};
+      let o = JSON.parse(text);
+      if (o && o.bundle === "kinmu-shayusha-v1") {   // まとめて保存したファイル：勤務実績表側の分は端末に戻す
+        if (o.kinmu) localStorage.setItem("kinmu-print-v1", JSON.stringify(o.kinmu));
+        if (o.km) localStorage.setItem(SYNC, JSON.stringify(o.km));
+        o = o.shayusha;
+      }
+      if (!o || !Array.isArray(o.recs)) throw new Error("形式が違います");
+      state = Object.assign(state, o); state.confirmed = state.confirmed || {}; inheritFromKinmu();
       $("#year").value = state.y; $("#month").value = state.m; fillSettings(); fillLists(); resetForm(); renderAll(); save();
       m.className = "msg ok"; m.textContent = "読み込みました。";
     } catch (e) { m.className = "msg err"; m.textContent = "読み込めませんでした。このツールで書き出したデータを、まるごと貼り付けてください。"; }
@@ -687,10 +693,13 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     setP("#cModel", v => { state.prof.car.model = v; syncVeh(); }); setP("#cPlate", v => { state.prof.car.plate = v; syncVeh(); }); setP("#cRate", v => state.prof.car.rate = v);
     setP("#bModel", v => { state.prof.bike.model = v; syncVeh(); }); setP("#bPlate", v => { state.prof.bike.plate = v; syncVeh(); }); setP("#bRate", v => state.prof.bike.rate = v);
     // データの書き出し・読み込み
+    // 勤務実績表と私有車（距離・記録）を1つにまとめて保存する
+    const rd1 = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
+    const bundleText = () => JSON.stringify({ bundle: "kinmu-shayusha-v1", kinmu: rd1("kinmu-print-v1"), shayusha: state, km: rd1(SYNC) });
     $("#exportJson").addEventListener("click", () => {
       const nm = (state.prof.name || "").replace(/[\s\\\/:*?"<>|]+/g, "") || "氏名なし", m = $("#dataMsg");
-      const name = `${nm}_私有車使用データ_${ym()}.txt`;
-      try { saveFile(name, new Blob([JSON.stringify(state)], { type: "text/plain" })); m.className = "msg ok"; m.textContent = `「${name}」をダウンロードしました（メモ帳で開けます）。`; }
+      const name = `${nm}_勤務実績表と私有車_${ym()}.txt`;
+      try { saveFile(name, new Blob([bundleText()], { type: "text/plain" })); m.className = "msg ok"; m.textContent = `「${name}」をダウンロードしました（メモ帳で開けます）。`; }
       catch (e) { m.className = "msg err"; m.textContent = "書き出せませんでした。"; }
     });
     $("#importJson").addEventListener("change", ev => { const f = ev.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => importText(rd.result); rd.readAsText(f); ev.target.value = ""; });
