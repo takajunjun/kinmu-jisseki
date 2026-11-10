@@ -58,6 +58,9 @@ button { cursor: pointer; }
 .tabs { display: flex; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; }
 .tab { flex: 1; min-height: 54px; border: 2px solid var(--line); background: var(--surface); border-radius: 10px; font-weight: 700; }
 .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.switch { display: flex; gap: 8px; }
+.switch .btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; text-align: center; }
+.switch .btn.cur { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
 .banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: .9rem; }
 .row { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -133,6 +136,10 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
     <h1>勤務実績表入力</h1>
     <span class="status" id="saveState"></span>
   </div>
+  <nav class="switch" aria-label="入力の切替">
+    <span class="btn cur" aria-current="page">勤務実績の入力</span>
+    <a class="btn sub" href="shayusha.html">私有車の入力</a>
+  </nav>
   <div class="banner" id="sampleBanner" hidden>
     <span>見本のデータが入っています。実際に使うときは消してから始めてください。</span>
     <button class="btn small" id="clearSample" type="button">見本を消して始める</button>
@@ -162,9 +169,8 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
 
     <div class="card" id="shaCard">
       <h2>私有車の距離</h2>
-      <p class="legend" style="margin:0 0 8px">私有車を使った距離は、別のページで入力して「確定」します。確定した距離が、その日のkmに入ります。</p>
+      <p class="legend" style="margin:0 0 8px">私有車を使った距離は、画面一番上の「私有車の入力」ボタンから別のページで入力して「確定」します。確定した距離が、その日のkmに入ります。</p>
       <div class="btns">
-        <a class="btn" href="shayusha.html" id="shaLink">私有車の使用を入力する（別ページ）</a>
         <button class="btn sub" type="button" id="pullKm">確定した距離を取り込む</button>
       </div>
       <div class="msg" id="kmMsg" role="status"></div>

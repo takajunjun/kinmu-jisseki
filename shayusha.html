@@ -43,6 +43,9 @@ a { color: var(--accent); }
 .tabs { display: flex; gap: 8px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; }
 .tab { flex: 1; min-height: 54px; border: 2px solid var(--line); background: var(--surface); border-radius: 10px; font-weight: 700; }
 .tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.switch { display: flex; gap: 8px; }
+.switch .btn { flex: 1; text-align: center; }
+.switch .btn.cur { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
 .row { display: flex; flex-wrap: wrap; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 9rem; }
@@ -89,8 +92,12 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
 <div class="wrap">
   <div class="top">
     <h1>私有車の使用入力</h1>
-    <span class="status"><a href="index.html">← 勤務実績表へ</a>　<span id="saveState"></span></span>
+    <span class="status"><span id="saveState"></span></span>
   </div>
+  <nav class="switch" aria-label="入力の切替">
+    <a class="btn sub" href="index.html">勤務実績の入力</a>
+    <span class="btn cur" aria-current="page">私有車の入力</span>
+  </nav>
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-in" aria-selected="true" aria-controls="p-in" type="button">入力</button>
     <button class="tab" role="tab" id="tab-form" aria-selected="false" aria-controls="p-form" type="button">申請書</button>
@@ -164,7 +171,6 @@ textarea { width: 100%; min-height: 8rem; padding: 10px 12px; border: 2px solid 
       <div id="dayKm"></div>
       <div class="btns" style="margin-top:12px">
         <button class="btn" type="button" id="confirmKm">この距離で確定する</button>
-        <a class="btn sub" href="index.html">勤務実績表を開く</a>
       </div>
       <div class="msg" id="syncMsg" role="status"></div>
     </div>
